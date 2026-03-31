@@ -197,7 +197,9 @@ class LeRobotDataset(torch.utils.data.Dataset):
         self.episodes = episodes
         self.tolerance_s = tolerance_s
         self.revision = revision if revision else CODEBASE_VERSION
-        self._video_backend = video_backend if video_backend else get_safe_default_codec()
+        self._video_backend = (
+            video_backend if video_backend else get_safe_default_codec()
+        )
         self._batch_encoding_size = batch_encoding_size
         self._vcodec = resolve_vcodec(vcodec)
         self._encoder_threads = encoder_threads
@@ -207,7 +209,10 @@ class LeRobotDataset(torch.utils.data.Dataset):
 
         # Load metadata (sets self.root once from the resolved metadata root)
         self.meta = LeRobotDatasetMetadata(
-            self.repo_id, self._requested_root, self.revision, force_cache_sync=force_cache_sync
+            self.repo_id,
+            self._requested_root,
+            self.revision,
+            force_cache_sync=force_cache_sync,
         )
         self.root = self.meta.root
         self.revision = self.meta.revision
@@ -360,7 +365,9 @@ class LeRobotDataset(torch.utils.data.Dataset):
         self._require_writer("add_frame")
         self.writer.add_frame(frame)
 
-    def save_episode(self, episode_data: dict | None = None, parallel_encoding: bool = True) -> None:
+    def save_episode(
+        self, episode_data: dict | None = None, parallel_encoding: bool = True
+    ) -> None:
         """Save the current episode buffer to disk.
 
         Delegates to :meth:`DatasetWriter.save_episode`. Encodes videos, writes
@@ -398,7 +405,10 @@ class LeRobotDataset(torch.utils.data.Dataset):
         """Check if there are unsaved frames in the episode buffer."""
         if self.writer is None:
             return False
-        return self.writer.episode_buffer is not None and self.writer.episode_buffer["size"] > 0
+        return (
+            self.writer.episode_buffer is not None
+            and self.writer.episode_buffer["size"] > 0
+        )
 
     def finalize(self):
         """Flush all pending work and close writers.
@@ -421,6 +431,7 @@ class LeRobotDataset(torch.utils.data.Dataset):
         """Return the number of frames in the selected episodes."""
         return self.num_frames
 
+    # 当调用 dataset[i] 时, 会触发这个函数. 以 idx = 5 为例:
     def __getitem__(self, idx) -> dict:
         """Return a single frame by index, with all transforms applied.
 
@@ -442,10 +453,18 @@ class LeRobotDataset(torch.utils.data.Dataset):
             raise RuntimeError(
                 "Cannot read from a dataset that is being recorded. Call finalize() first, then access items."
             )
+        # 懒加载机制。确保后台的“读取器”（DatasetReader）已经准备好，能够打开那些 Parquet 文件和 MP4 视频。
         reader = self._ensure_reader()
+
         if reader.hf_dataset is None:
             # One-shot load after finalize()
             reader.load_and_activate()
+
+        # * 核心跳板 reader.get_item(idx)：
+        # 关键点：LeRobotDataset 类本身只是一层皮，真正的脏活累活（去哪找文件、怎么解码）都在 DatasetReader.get_item 里。它的任务：
+        #       1、去 Parquet 表里查第 5 帧对应的 state、action 是多少。
+        #       2、去查第 5 帧对应的视频文件路径和时间戳。
+        #       3、处理 delta_timestamps：如果设置了 delta_timestamps，这个函数会一口气取出一串帧（比如第 3, 4, 5 帧），而不是只取第 5 帧。
         return reader.get_item(idx)
 
     def select_columns(self, column_names: str | list[str]):
@@ -544,14 +563,22 @@ class LeRobotDataset(torch.utils.data.Dataset):
             hub_api.upload_folder(**upload_kwargs)
 
         card = create_lerobot_dataset_card(
-            tags=tags, dataset_info=self.meta.info, license=license, repo_id=self.repo_id, **card_kwargs
+            tags=tags,
+            dataset_info=self.meta.info,
+            license=license,
+            repo_id=self.repo_id,
+            **card_kwargs,
         )
         card.push_to_hub(repo_id=self.repo_id, repo_type="dataset", revision=branch)
 
         if tag_version:
             with contextlib.suppress(RevisionNotFoundError):
-                hub_api.delete_tag(self.repo_id, tag=CODEBASE_VERSION, repo_type="dataset")
-            hub_api.create_tag(self.repo_id, tag=CODEBASE_VERSION, revision=branch, repo_type="dataset")
+                hub_api.delete_tag(
+                    self.repo_id, tag=CODEBASE_VERSION, repo_type="dataset"
+                )
+            hub_api.create_tag(
+                self.repo_id, tag=CODEBASE_VERSION, revision=branch, repo_type="dataset"
+            )
 
     def _download(self, download_videos: bool = True) -> None:
         """Downloads the dataset from the given 'repo_id' at the provided version."""
@@ -665,7 +692,9 @@ class LeRobotDataset(torch.utils.data.Dataset):
         obj.image_transforms = None
         obj.delta_timestamps = None
         obj.episodes = None
-        obj._video_backend = video_backend if video_backend is not None else get_safe_default_codec()
+        obj._video_backend = (
+            video_backend if video_backend is not None else get_safe_default_codec()
+        )
         obj._batch_encoding_size = batch_encoding_size
         obj._vcodec = vcodec
         obj._encoder_threads = encoder_threads
@@ -676,7 +705,9 @@ class LeRobotDataset(torch.utils.data.Dataset):
         # Create writer
         streaming_enc = None
         if streaming_encoding and len(obj.meta.video_keys) > 0:
-            streaming_enc = cls._build_streaming_encoder(fps, vcodec, encoder_queue_maxsize, encoder_threads)
+            streaming_enc = cls._build_streaming_encoder(
+                fps, vcodec, encoder_queue_maxsize, encoder_threads
+            )
         obj.writer = DatasetWriter(
             meta=obj.meta,
             root=obj.root,
@@ -757,7 +788,9 @@ class LeRobotDataset(torch.utils.data.Dataset):
         obj.image_transforms = None
         obj.delta_timestamps = None
         obj.episodes = None
-        obj._video_backend = video_backend if video_backend else get_safe_default_codec()
+        obj._video_backend = (
+            video_backend if video_backend else get_safe_default_codec()
+        )
         obj._batch_encoding_size = batch_encoding_size
         obj._vcodec = vcodec
         obj._encoder_threads = encoder_threads
@@ -767,7 +800,10 @@ class LeRobotDataset(torch.utils.data.Dataset):
 
         # Load metadata (revision-safe when root is not provided)
         obj.meta = LeRobotDatasetMetadata(
-            obj.repo_id, obj._requested_root, obj.revision, force_cache_sync=force_cache_sync
+            obj.repo_id,
+            obj._requested_root,
+            obj.revision,
+            force_cache_sync=force_cache_sync,
         )
         obj.root = obj.meta.root
 

@@ -1,0 +1,150 @@
+# * repo_id = "lerobot/aloha_mobile_cabinet"
+{
+    "codebase_version": "v3.0",
+    "robot_type": "aloha",
+    "total_episodes": 85,
+    "total_frames": 127500, # 样本总帧数。每个 episode 是 30s，fps=50，共 85 个 episode，所以 30 * 50 * 85 = 127500
+    "total_tasks": 1, # 数据集包含的物理帧总数。"Open the top cabinet, store the pot inside it then close the cabinet."
+    "chunks_size": 1000, # 数据分片大小。为了优化 IO，将 N 帧打包存储。
+    "fps": 50, # 视频帧率为 50，每个视频时间均为 30s，所以每个视频共 50 * 30 = 1500 帧
+    "splits": { "train": "0:85" },
+    "data_path": "data/chunk-{chunk_index:03d}/file-{file_index:03d}.parquet",
+    "video_path": "videos/{video_key}/chunk-{chunk_index:03d}/file-{file_index:03d}.mp4",
+    "features":
+        {
+            "observation.images.cam_high":
+                {
+                    "dtype": "video",
+                    "shape": [480, 640, 3],
+                    "names": ["height", "width", "channel"],
+                    "video_info":
+                        {
+                            "video.fps": 50.0,
+                            "video.codec": "av1",
+                            "video.pix_fmt": "yuv420p",
+                            "video.is_depth_map": false,
+                            "has_audio": false,
+                        },
+                },
+            "observation.images.cam_left_wrist":
+                {
+                    "dtype": "video",
+                    "shape": [480, 640, 3],
+                    "names": ["height", "width", "channel"],
+                    "video_info":
+                        {
+                            "video.fps": 50.0,
+                            "video.codec": "av1",
+                            "video.pix_fmt": "yuv420p",
+                            "video.is_depth_map": false,
+                            "has_audio": false,
+                        },
+                },
+            "observation.images.cam_right_wrist":
+                {
+                    "dtype": "video",
+                    "shape": [480, 640, 3],
+                    "names": ["height", "width", "channel"],
+                    "video_info":
+                        {
+                            "video.fps": 50.0,
+                            "video.codec": "av1",
+                            "video.pix_fmt": "yuv420p",
+                            "video.is_depth_map": false,
+                            "has_audio": false,
+                        },
+                },
+            "observation.state":
+                {
+                    "dtype": "float32",
+                    "shape": [14],
+                    "names":
+                        {
+                            "motors":
+                                [
+                                    "left_waist",
+                                    "left_shoulder",
+                                    "left_elbow",
+                                    "left_forearm_roll",
+                                    "left_wrist_angle",
+                                    "left_wrist_rotate",
+                                    "left_gripper",
+                                    "right_waist",
+                                    "right_shoulder",
+                                    "right_elbow",
+                                    "right_forearm_roll",
+                                    "right_wrist_angle",
+                                    "right_wrist_rotate",
+                                    "right_gripper",
+                                ],
+                        },
+                    "fps": 50,
+                },
+            "observation.effort":
+                {
+                    "dtype": "float32",
+                    "shape": [14],
+                    "names":
+                        {
+                            "motors":
+                                [
+                                    "left_waist",
+                                    "left_shoulder",
+                                    "left_elbow",
+                                    "left_forearm_roll",
+                                    "left_wrist_angle",
+                                    "left_wrist_rotate",
+                                    "left_gripper",
+                                    "right_waist",
+                                    "right_shoulder",
+                                    "right_elbow",
+                                    "right_forearm_roll",
+                                    "right_wrist_angle",
+                                    "right_wrist_rotate",
+                                    "right_gripper",
+                                ],
+                        },
+                    "fps": 50,
+                },
+            "action":
+                {
+                    "dtype": "float32",
+                    "shape": [14],
+                    "names":
+                        {
+                            "motors":
+                                [
+                                    "left_waist",
+                                    "left_shoulder",
+                                    "left_elbow",
+                                    "left_forearm_roll",
+                                    "left_wrist_angle",
+                                    "left_wrist_rotate",
+                                    "left_gripper",
+                                    "right_waist",
+                                    "right_shoulder",
+                                    "right_elbow",
+                                    "right_forearm_roll",
+                                    "right_wrist_angle",
+                                    "right_wrist_rotate",
+                                    "right_gripper",
+                                ],
+                        },
+                    "fps": 50,
+                },
+            "episode_index":
+                { "dtype": "int64", "shape": [1], "names": null, "fps": 50 },
+            "frame_index":
+                { "dtype": "int64", "shape": [1], "names": null, "fps": 50 },
+            "timestamp":
+                { "dtype": "float32", "shape": [1], "names": null, "fps": 50 },
+            "next.done":
+                { "dtype": "bool", "shape": [1], "names": null, "fps": 50 },
+            "index":
+                { "dtype": "int64", "shape": [1], "names": null, "fps": 50 },
+            "task_index":
+                { "dtype": "int64", "shape": [1], "names": null, "fps": 50 },
+        },
+    "data_files_size_in_mb": 100,
+    "video_files_size_in_mb": 500,
+}

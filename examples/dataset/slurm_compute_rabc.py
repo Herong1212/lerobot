@@ -35,6 +35,16 @@ Usage:
         --partition cpu --push-to-hub
 """
 
+"""
+rabc 通常代表 Robot Action/Attribute Statistics 的某种计算（可能是均值、方差或覆盖范围）。
+
+作用：
+    展示如何在集群 (Slurm 是常用的高性能计算集群管理系统）上并行计算整个数据集的统计特征。
+
+核心功能：
+    遍历所有 12.7 万帧数据, 计算每一个关节 (Joint) 的归一化参数 (Mean, Std, Min, Max)。
+"""
+
 import argparse
 from pathlib import Path
 
