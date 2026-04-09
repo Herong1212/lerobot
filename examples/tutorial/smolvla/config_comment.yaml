@@ -1,0 +1,68 @@
+{
+    "type": "smolvla",
+    "n_obs_steps": 1, # 观测步数。模型每次推理只看当前 1 帧的数据（不回看过去多帧）。
+    "input_features": {
+            # 机器人当前状态（通常是关节角度）。shape: [6] 表示期待 6 个自由度。
+            "observation.state": { "type": "STATE", "shape": [6] },
+            # 重点！ 模型期待 3 路相机 输入。shape: [3, 256, 256]：3 是 RGB 通道，256, 256 是模型内部处理的分辨率。
+            "observation.images.camera1":
+                { "type": "VISUAL", "shape": [3, 256, 256] },
+            "observation.images.camera2":
+                { "type": "VISUAL", "shape": [3, 256, 256] },
+            "observation.images.camera3":
+                { "type": "VISUAL", "shape": [3, 256, 256] },
+        },
+    "output_features": { "action": { "type": "ACTION", "shape": [6] } }, # 模型输出的动作。shape: [6] 表示输出 6 个控制量（对应 6 个电机的指令）。
+    "device": "cuda",
+    "use_amp": false, # 是否开启自动混合精度（能省显存，但这里设为关闭）
+    "push_to_hub": true,
+    "repo_id": null,
+    "private": null,
+    "tags": null,
+    "license": null,
+
+    # * 模型一次推理实际上会预测未来的 50 步 动作（Action Chunking），然后机器人会连续执行这 50 步。这能显著提高动作的连贯性。
+    "chunk_size": 50, # 动作块大小：一次推理预测未来 50 步的动作
+    "n_action_steps": 50, # 动作步数：实际执行时连续执行这 50 步
+
+    # * 数据缩放规则：
+    "normalization_mapping": {
+            "VISUAL": "IDENTITY", # 图像数据保持原样（0-1 之间）
+            "STATE": "MEAN_STD", # 状态数据按均值和标准差归一化。
+            "ACTION": "MEAN_STD", # 动作数据也按均值和标准差归一化。
+        },
+
+    "max_state_dim": 32, # 允许的最大状态维度（用于填充对齐）
+    "max_action_dim": 32, # 允许的最大动作维度（用于填充对齐）
+    "resize_imgs_with_padding": [512, 512], # 虽然输入是 256，但预处理时会先将原始图缩放/填充到 512x512，然后再处理。
+    "empty_cameras": 0, # 允许缺少的相机数量。这里为 0，说明 3 路相机必须全部在线。
+    "adapt_to_pi_aloha": false, # 是否开启 Physical Intelligence 的 ALOHA 适配逻辑
+    "use_delta_joint_actions_aloha": false, # 是否使用增量动作（而不是绝对角度）
+    "tokenizer_max_length": 48, # 文本指令（Task）编码的最大长度
+    "num_steps": 10, # 扩散步数（注意：SmolVLA 内部可能可选扩散或直接预测，此处为10）
+    "use_cache": true, # 是否在推理时使用 KV 缓存以加速大模型生成
+    "freeze_vision_encoder": true, # 训练策略：冻结视觉特征提取器。这意味着在训练机器人抓取时，不改变 AI “看图”的能力，只训练它“做动作”的能力。
+    "train_expert_only": true, # 只训练专家层（专家混合模型 MoE 的逻辑）
+    "train_state_proj": true, # 是否训练状态投影层（将 6 维状态转为 VLM 向量的空间）
+
+    "optimizer_lr": 0.0001, # 学习率，决定了模型更新的步长。
+    "optimizer_betas": [0.9, 0.95], # Adam 优化器的矩估计参数
+    "optimizer_eps": 1e-08, # 优化器数值稳定性参数（防止除零）
+    "optimizer_weight_decay": 1e-10, # 权重衰减：防止过拟合的正则化系数
+    "optimizer_grad_clip_norm": 10, # 梯度裁剪。防止梯度过大导致模型“练废了”。
+    "scheduler_warmup_steps": 1000, # 学习率预热步数。前 1000 次迭代学习率会从 0 慢慢升到设定值，防止训练初期崩溃。
+    "scheduler_decay_steps": 30000, # 学习率衰减步数
+    "scheduler_decay_lr": 2.5e-06, # 衰减后的最终学习率
+    "vlm_model_name": "HuggingFaceTB/SmolVLM2-500M-Video-Instruct", # 指明底层“大脑”是 SmolVLM2。这就是为什么你会看到它下载第二个文件夹。
+    "load_vlm_weights": true, # 是否加载预训练的 VLM 权重
+    "add_image_special_tokens": false, # 是否在 Prompt 中添加图像占位符 token
+    "attention_mode": "cross_attn", # 注意力机制模式：使用交叉注意力融合视觉和动作
+    "prefix_length": 0, # 视觉前缀长度
+    "pad_language_to": "max_length", # 文本填充方式：填充到最大长度
+    "num_expert_layers": 0, # 专家层数量（0 表示不使用额外的 MoE 专家）
+    "num_vlm_layers": 16, # VLM 网络深度：16层
+    "self_attn_every_n_layers": 2, # 每隔多少层进行一次自注意力计算
+    "expert_width_multiplier": 0.75, # 专家层宽度缩放因子
+    "min_period": 0.004, # 时间编码的最小周期
+    "max_period": 4.0, # 时间编码的最大周期
+}

@@ -33,7 +33,9 @@ PATH_KEY = "path"
 PLUGIN_DISCOVERY_SUFFIX = "discover_packages_path"
 
 
-def get_cli_overrides(field_name: str, args: Sequence[str] | None = None) -> list[str] | None:
+def get_cli_overrides(
+    field_name: str, args: Sequence[str] | None = None
+) -> list[str] | None:
     """Parses arguments from cli at a given nested attribute level.
 
     For example, supposing the main script was called with:
@@ -46,7 +48,10 @@ def get_cli_overrides(field_name: str, args: Sequence[str] | None = None) -> lis
         args = sys.argv[1:]
     attr_level_args = []
     detect_string = f"--{field_name}."
-    exclude_strings = (f"--{field_name}.{draccus.CHOICE_TYPE_KEY}=", f"--{field_name}.{PATH_KEY}=")
+    exclude_strings = (
+        f"--{field_name}.{draccus.CHOICE_TYPE_KEY}=",
+        f"--{field_name}.{PATH_KEY}=",
+    )
     for arg in args:
         if arg.startswith(detect_string) and not arg.startswith(exclude_strings):
             denested_arg = f"--{arg.removeprefix(detect_string)}"
@@ -158,7 +163,9 @@ def filter_arg(field_to_filter: str, args: Sequence[str] | None = None) -> list[
     return [arg for arg in args if not arg.startswith(f"--{field_to_filter}=")]
 
 
-def filter_path_args(fields_to_filter: str | list[str], args: Sequence[str] | None = None) -> list[str]:
+def filter_path_args(
+    fields_to_filter: str | list[str], args: Sequence[str] | None = None
+) -> list[str]:
     """
     Filters command-line arguments related to fields with specific path arguments.
 
@@ -187,7 +194,9 @@ def filter_path_args(fields_to_filter: str | list[str], args: Sequence[str] | No
                     argument=None,
                     message=f"Cannot specify both --{field}.{PATH_KEY} and --{field}.{draccus.CHOICE_TYPE_KEY}",
                 )
-            filtered_args = [arg for arg in filtered_args if not arg.startswith(f"--{field}.")]
+            filtered_args = [
+                arg for arg in filtered_args if not arg.startswith(f"--{field}.")
+            ]
 
     return filtered_args
 
@@ -203,34 +212,131 @@ def wrap(config_path: Path | None = None) -> Callable[[F], F]:
             from the CLI '.type' arguments
     """
 
+    # NOTE 命令行参数在这里进行序列化（解析）
     def wrapper_outer(fn: F) -> F:
+
+        # 当运行下面命令时：
+        # python src/lerobot/scripts/lerobot_record.py --robot.type=so100_follower --robot.port=/dev/ttyUSB0
+
+        # sys.argv 的值是：
+        #   sys.argv = [
+        #   'src/lerobot/scripts/lerobot_record.py',    # sys.argv[0] - 脚本名
+        #   '--robot.type=so100_follower',              # sys.argv[1]
+        #   '--robot.port=/dev/ttyUSB0'                 # sys.argv[2]
+        #   ]
+
+        # sys.argv[1:] 就是去掉脚本名后的参数列表
+        # cli_args = sys.argv[1:]
+        # ['--robot.type=so100_follower', '--robot.port=/dev/ttyUSB0', ......]
+
         @wraps(fn)
         def wrapper_inner(*args: Any, **kwargs: Any) -> Any:
+            # 获取被装饰函数的第一个参数
+            # 对于 record(cfg: RecordConfig) 来说，
+            #   1、fn 就是 record 函数；
+            #   2、argspec.args[0] = 'cfg'  (第一个参数名，也就是 cfg: RecordConfig)；
             argspec = inspect.getfullargspec(fn)
+            # argspec.annotations = {'cfg': RecordConfig, 'return': LeRobotDataset}
+            # 所以 argtype = RecordConfig
             argtype = argspec.annotations[argspec.args[0]]
+
+            # 检查是否已经传入了配置对象
             if len(args) > 0 and type(args[0]) is argtype:
-                cfg = args[0]
+                # 如果已经传入，直接使用
+                cfg = args[0]  # * 使用传入的对象
                 args = args[1:]
             else:
-                cli_args = sys.argv[1:]
+                # 否则从命令行解析
+                cli_args = sys.argv[1:]  # * 获取所有命令行参数
+                # 以 python src/lerobot/scripts/lerobot_record.py
+                # --robot.type=so100_follower --robot.port=/dev/tty.usbmodem58760431541
+                # --robot.cameras="{laptop: {type: opencv, index_or_path: 0, width: 640, height: 480, fps: 30}}"
+                # --robot.id=black --dataset.repo_id=ghr/demo_dataset --dataset.num_episodes=2
+                # --dataset.single_task="This is a demo dataset" --dataset.streaming_encoding=true
+                # --dataset.encoder_threads=2 --display_data=true --teleop.type=so100_leader
+                # --teleop.port=/dev/tty.usbmodem58760431551 --teleop.id=blue 为例还解析命令行参数解析过程...
+                # cli_args = [
+                #     '--robot.type=so100_follower',
+                #     '--robot.port=/dev/tty.usbmodem58760431541',
+                #     '--robot.cameras={laptop: {type: opencv, ...}}',
+                #     '--robot.id=black',
+                #     '--dataset.repo_id=ghr/demo_dataset',
+                #     '--dataset.num_episodes=2',
+                #     '--dataset.single_task=This is a demo dataset',
+                #     '--dataset.streaming_encoding=true',
+                #     '--dataset.encoder_threads=2',
+                #     '--display_data=true',
+                #     '--teleop.type=so100_leader',
+                #     '--teleop.port=/dev/tty.usbmodem58760431551',
+                #     '--teleop.id=blue'
+                # ]
+                # 处理插件参数（如果有的话）
                 plugin_args = parse_plugin_args(PLUGIN_DISCOVERY_SUFFIX, cli_args)
+                # PLUGIN_DISCOVERY_SUFFIX = "discover_packages_path"
+                # 如果没有 --*.discover_packages_path 参数，plugin_args = {}
+
+                # 遍历插件并加载（这里没有插件，跳过）
                 for plugin_cli_arg, plugin_path in plugin_args.items():
                     try:
                         load_plugin(plugin_path)
                     except PluginLoadError as e:
                         # add the relevant CLI arg to the error message
-                        raise PluginLoadError(f"{e}\nFailed plugin CLI Arg: {plugin_cli_arg}") from e
+                        raise PluginLoadError(
+                            f"{e}\nFailed plugin CLI Arg: {plugin_cli_arg}"
+                        ) from e
                     cli_args = filter_arg(plugin_cli_arg, cli_args)
+
+                # 处理 config_path 参数（如果有的话）
                 config_path_cli = parse_arg("config_path", cli_args)
+                # 如果没有 --config_path=xxx，则 config_path_cli = None
+
+                # case1 分支 1: 检查 RecordConfig 是否有 __get_path_fields__ 方法
                 if has_method(argtype, "__get_path_fields__"):
                     path_fields = argtype.__get_path_fields__()
+                    # path_fields = ["policy"]  （来自 RecordConfig 的定义）
                     cli_args = filter_path_args(path_fields, cli_args)
+                    # 移除所有 --policy.xxx 参数，因为它们会被单独处理
+                    # 这里没有 --policy.xxx，所以 cli_args 不变
+                # case2 分支 2: 检查是否有 from_pretrained 方法
                 if has_method(argtype, "from_pretrained") and config_path_cli:
                     cli_args = filter_arg("config_path", cli_args)
+                    # RecordConfig 没有 from_pretrained 方法，跳过
                     cfg = argtype.from_pretrained(config_path_cli, cli_args=cli_args)
+                # case3 分支 3: 检查完毕, 开始最终的序列化
                 else:
-                    cfg = draccus.parse(config_class=argtype, config_path=config_path, args=cli_args)
-            response = fn(cfg, *args, **kwargs)
+                    # 调用 draccus.parse() 解析配置, 解析过程👇
+                    #   1. 识别 RecordConfig 是一个 dataclass
+                    #   2. 遍历其字段：robot, dataset, teleop, policy, ...
+                    #   3. 对每个字段递归解析：
+                    #       3.1 --robot.type=so100_follower
+                    #           → 查找 RobotConfig 的子类中名为 "so100_follower" 的类
+                    #           → 找到 SOFollowerRobotConfig
+                    #           → 继续解析 SOFollowerRobotConfig 的字段
+                    #               --robot.port=/dev/tty.usbmodem58760431541
+                    #               → 设置 port = "/dev/tty.usbmodem58760431541"
+                    #
+                    #               --robot.id=black
+                    #               → 设置 id = "black"
+
+                    #               --robot.cameras={laptop: {type: opencv, ...}} "类型为 dict[str, CameraConfig]"
+                    #               → 解析 cameras 字典
+                    #               → 对于 key = "laptop" 相机：
+                    #                   type: opencv → 使用 OpenCVCameraConfig
+                    #                   index_or_path: 0
+                    #                   width: 640
+                    #                   height: 480
+                    #                   fps: 30
+                    #       3.2 同样解析 dataset、teleop 等字段...
+                    #   4. 最终生成完整的 RecordConfig 对象
+
+                    # * 此时的 cfg 是一个完整的 RecordConfig 对象了!!!
+                    cfg = draccus.parse(
+                        config_class=argtype, config_path=config_path, args=cli_args
+                    )  # argtype = RecordConfig, config_path = None, cli_args = [...一大堆]
+
+            # 将解析好的 cfg 传入 record() 函数
+            response = fn(cfg, *args, **kwargs)  # 等价于：record(cfg)
+
             return response
 
         return cast(F, wrapper_inner)

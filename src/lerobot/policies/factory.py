@@ -31,12 +31,16 @@ from lerobot.envs.utils import env_to_policy_features
 from lerobot.policies.act.configuration_act import ACTConfig
 from lerobot.policies.diffusion.configuration_diffusion import DiffusionConfig
 from lerobot.policies.groot.configuration_groot import GrootConfig
-from lerobot.policies.multi_task_dit.configuration_multi_task_dit import MultiTaskDiTConfig
+from lerobot.policies.multi_task_dit.configuration_multi_task_dit import (
+    MultiTaskDiTConfig,
+)
 from lerobot.policies.pi0.configuration_pi0 import PI0Config
 from lerobot.policies.pi05.configuration_pi05 import PI05Config
 from lerobot.policies.pretrained import PreTrainedPolicy
 from lerobot.policies.sac.configuration_sac import SACConfig
-from lerobot.policies.sac.reward_model.configuration_classifier import RewardClassifierConfig
+from lerobot.policies.sac.reward_model.configuration_classifier import (
+    RewardClassifierConfig,
+)
 from lerobot.policies.sarm.configuration_sarm import SARMConfig
 from lerobot.policies.smolvla.configuration_smolvla import SmolVLAConfig
 from lerobot.policies.tdmpc.configuration_tdmpc import TDMPCConfig
@@ -88,7 +92,9 @@ def get_policy_class(name: str) -> type[PreTrainedPolicy]:
 
         return ACTPolicy
     elif name == "multi_task_dit":
-        from lerobot.policies.multi_task_dit.modeling_multi_task_dit import MultiTaskDiTPolicy
+        from lerobot.policies.multi_task_dit.modeling_multi_task_dit import (
+            MultiTaskDiTPolicy,
+        )
 
         return MultiTaskDiTPolicy
     elif name == "vqbet":
@@ -226,7 +232,7 @@ def make_pre_post_processors(
     PolicyProcessorPipeline[PolicyAction, PolicyAction],
 ]:
     """
-    Create or load pre- and post-processor pipelines for a given policy.
+    为给定策略创建或加载预处理和后处理管道。
 
     This function acts as a factory. It can either load existing processor pipelines
     from a pretrained path or create new ones from scratch based on the policy
@@ -234,19 +240,27 @@ def make_pre_post_processors(
     processors (e.g., `make_tdmpc_pre_post_processors`).
 
     Args:
-        policy_cfg: The configuration of the policy for which to create processors.
-        pretrained_path: An optional path to load pretrained processor pipelines from.
-            If provided, pipelines are loaded from this path.
-        **kwargs: Keyword arguments for processor configuration, as defined in
-            `ProcessorConfigKwargs`.
+        policy_cfg: 需要创建处理器的策略配置，告诉函数要为哪种类型的机器人策略创建处理器（如 ACT、TDMPC 等）
+        pretrained_path: 可选参数，指定从哪里加载预训练的处理器管道。
+            如果提供此路径，则从此路径加载管道。
+        **kwargs: 处理器配置的关键字参数，定义在 [ProcessorConfigKwargs](file:///home/robot/lerobot/src/lerobot/policies/factory.py#L197-L216) 中。
 
     Returns:
         A tuple containing the input (pre-processor) and output (post-processor) pipelines.
+
+    返回： 一个包含输入（预处理器 pre-processor) 和输出（后处理器 post-processor) 管道的元组：
+                第一个元素: PolicyProcessorPipeline[dict[str, Any], dict[str, Any]] - 预处理器管道
+                    作用：处理输入数据（如摄像头图像、传感器读数等），将其转换为策略模型可以理解的格式
+                    例子：将原始图像像素值(0-255)归一化到(-1,1)范围，或者将关节角度标准化
+                第二个元素: PolicyProcessorPipeline[PolicyAction, PolicyAction] - 后处理器管道
+                    作用：处理策略模型输出的动作，将其转换为机器人实际可以执行的格式
+                    例子：将模型输出的标准化动作值反归一化为实际关节角度或末端执行器位置
 
     Raises:
         NotImplementedError: If a processor factory is not implemented for the given
             policy configuration type.
     """
+    # 如果提供了预训练路径，则从该路径加载处理器管道
     if pretrained_path:
         # TODO(Steven): Temporary patch, implement correctly the processors for Gr00t
         if isinstance(policy_cfg, GrootConfig):
@@ -269,11 +283,13 @@ def make_pre_post_processors(
             kwargs["preprocessor_overrides"] = preprocessor_overrides
             kwargs["postprocessor_overrides"] = postprocessor_overrides
 
+        # 从预训练路径加载预处理器和后处理器
         return (
             PolicyProcessorPipeline.from_pretrained(
                 pretrained_model_name_or_path=pretrained_path,
                 config_filename=kwargs.get(
-                    "preprocessor_config_filename", f"{POLICY_PREPROCESSOR_DEFAULT_NAME}.json"
+                    "preprocessor_config_filename",
+                    f"{POLICY_PREPROCESSOR_DEFAULT_NAME}.json",
                 ),
                 overrides=kwargs.get("preprocessor_overrides", {}),
                 to_transition=batch_to_transition,
@@ -282,7 +298,8 @@ def make_pre_post_processors(
             PolicyProcessorPipeline.from_pretrained(
                 pretrained_model_name_or_path=pretrained_path,
                 config_filename=kwargs.get(
-                    "postprocessor_config_filename", f"{POLICY_POSTPROCESSOR_DEFAULT_NAME}.json"
+                    "postprocessor_config_filename",
+                    f"{POLICY_POSTPROCESSOR_DEFAULT_NAME}.json",
                 ),
                 overrides=kwargs.get("postprocessor_overrides", {}),
                 to_transition=policy_action_to_transition,
@@ -290,9 +307,11 @@ def make_pre_post_processors(
             ),
         )
 
-    # Create a new processor based on policy type
+    # 根据策略类型（policy type）创建新的处理器
     if isinstance(policy_cfg, TDMPCConfig):
-        from lerobot.policies.tdmpc.processor_tdmpc import make_tdmpc_pre_post_processors
+        from lerobot.policies.tdmpc.processor_tdmpc import (
+            make_tdmpc_pre_post_processors,
+        )
 
         processors = make_tdmpc_pre_post_processors(
             config=policy_cfg,
@@ -300,7 +319,9 @@ def make_pre_post_processors(
         )
 
     elif isinstance(policy_cfg, DiffusionConfig):
-        from lerobot.policies.diffusion.processor_diffusion import make_diffusion_pre_post_processors
+        from lerobot.policies.diffusion.processor_diffusion import (
+            make_diffusion_pre_post_processors,
+        )
 
         processors = make_diffusion_pre_post_processors(
             config=policy_cfg,
@@ -326,7 +347,9 @@ def make_pre_post_processors(
         )
 
     elif isinstance(policy_cfg, VQBeTConfig):
-        from lerobot.policies.vqbet.processor_vqbet import make_vqbet_pre_post_processors
+        from lerobot.policies.vqbet.processor_vqbet import (
+            make_vqbet_pre_post_processors,
+        )
 
         processors = make_vqbet_pre_post_processors(
             config=policy_cfg,
@@ -358,19 +381,24 @@ def make_pre_post_processors(
         )
 
     elif isinstance(policy_cfg, RewardClassifierConfig):
-        from lerobot.policies.sac.reward_model.processor_classifier import make_classifier_processor
+        from lerobot.policies.sac.reward_model.processor_classifier import (
+            make_classifier_processor,
+        )
 
         processors = make_classifier_processor(
             config=policy_cfg,
             dataset_stats=kwargs.get("dataset_stats"),
         )
 
+    # 如果是 SmolVLA 策略配置
     elif isinstance(policy_cfg, SmolVLAConfig):
-        from lerobot.policies.smolvla.processor_smolvla import make_smolvla_pre_post_processors
+        from lerobot.policies.smolvla.processor_smolvla import (
+            make_smolvla_pre_post_processors,
+        )
 
         processors = make_smolvla_pre_post_processors(
-            config=policy_cfg,
-            dataset_stats=kwargs.get("dataset_stats"),
+            config=policy_cfg,  # 传入策略配置
+            dataset_stats=kwargs.get("dataset_stats"),  # 数据集统计信息
         )
 
     elif isinstance(policy_cfg, SARMConfig):
@@ -382,7 +410,9 @@ def make_pre_post_processors(
             dataset_meta=kwargs.get("dataset_meta"),
         )
     elif isinstance(policy_cfg, GrootConfig):
-        from lerobot.policies.groot.processor_groot import make_groot_pre_post_processors
+        from lerobot.policies.groot.processor_groot import (
+            make_groot_pre_post_processors,
+        )
 
         processors = make_groot_pre_post_processors(
             config=policy_cfg,
@@ -400,7 +430,9 @@ def make_pre_post_processors(
         )
 
     elif isinstance(policy_cfg, WallXConfig):
-        from lerobot.policies.wall_x.processor_wall_x import make_wall_x_pre_post_processors
+        from lerobot.policies.wall_x.processor_wall_x import (
+            make_wall_x_pre_post_processors,
+        )
 
         processors = make_wall_x_pre_post_processors(
             config=policy_cfg,
@@ -414,7 +446,9 @@ def make_pre_post_processors(
                 dataset_stats=kwargs.get("dataset_stats"),
             )
         except Exception as e:
-            raise ValueError(f"Processor for policy type '{policy_cfg.type}' is not implemented.") from e
+            raise ValueError(
+                f"Processor for policy type '{policy_cfg.type}' is not implemented."
+            ) from e
 
     return processors
 
@@ -426,7 +460,7 @@ def make_policy(
     rename_map: dict[str, str] | None = None,
 ) -> PreTrainedPolicy:
     """
-    Instantiate a policy model.
+    创建一个策略模型。
 
     This factory function handles the logic of creating a policy, which requires
     determining the input and output feature shapes. These shapes can be derived
@@ -444,16 +478,23 @@ def make_policy(
                  expected policy feature names (e.g., `"left"` → `"camera1"`).
 
     Returns:
-        An instantiated and device-placed policy model.
+        An instantiated and device-placed policy model. 即：一个已实例化并放置在指定设备上的策略模型
 
     Raises:
-        ValueError: If both or neither of `ds_meta` and `env_cfg` are provided.
+        ValueError: If both or neither of `ds_meta` and `env_cfg` are provided. 即：如果不允许同时提供或都没有提供 `ds_meta` 和 `env_cfg`。
         NotImplementedError: If attempting to use an unsupported policy-backend
-                             combination (e.g., VQBeT with 'mps').
+                             combination (e.g., VQBeT with 'mps'). 如果尝试使用不支持的策略-后端组合 (例如, VQBeT 与 'mps'）。
     """
+    # 检查是否提供了数据集元数据或环境配置（只能二选一）
+    # 为什么需要这些信息？因为策略需要知道输入的数据是什么样子的（比如图像尺寸、动作维度等）
     if bool(ds_meta) == bool(env_cfg):
-        raise ValueError("Either one of a dataset metadata or a sim env must be provided.")
+        raise ValueError(
+            "Either one of a dataset metadata or a sim env must be provided."
+        )
 
+    # 特定于 VQBeT 策略的兼容性检查（MPS后端不支持）
+    # 注意：目前如果你尝试在MPS后端运行VQBeT，会出现错误
+    # 原因：MPS后端尚未实现 'aten::unique_dim' 操作
     # NOTE: Currently, if you try to run vqbet with mps backend, you'll get this error.
     # TODO(aliberts, rcadene): Implement a check_backend_compatibility in policies?
     # NotImplementedError: The operator 'aten::unique_dim' is not currently implemented for the MPS device. If
@@ -467,12 +508,17 @@ def make_policy(
             "Please use `cpu` or `cuda` backend."
         )
 
+    # 获取策略类（根据策略类型获取相应的策略类）
     policy_cls = get_policy_class(cfg.type)
 
     kwargs = {}
+    # 根据是否有数据集元数据决定使用哪种方式获取特征
     if ds_meta is not None:
+        # 从数据集元数据获取特征信息
+        # 例如：如果数据集中有左摄像头图像(640x480)和右摄像头图像(640x480)，以及7维关节角度作为动作
         features = dataset_to_policy_features(ds_meta.features)
     else:
+        # 从环境配置获取特征信息
         if not cfg.pretrained_path:
             logging.warning(
                 "You are instantiating a policy from scratch and its features are parsed from an environment "
@@ -483,30 +529,43 @@ def make_policy(
             raise ValueError("env_cfg cannot be None when ds_meta is not provided")
         features = env_to_policy_features(env_cfg)
 
-    cfg.output_features = {key: ft for key, ft in features.items() if ft.type is FeatureType.ACTION}
+    # 设置输出特征（通常是动作）
+    cfg.output_features = {
+        key: ft for key, ft in features.items() if ft.type is FeatureType.ACTION
+    }
+    # 如果没有设置输入特征，则自动设置（除动作外的所有特征）
     if not cfg.input_features:
-        cfg.input_features = {key: ft for key, ft in features.items() if key not in cfg.output_features}
+        cfg.input_features = {
+            key: ft for key, ft in features.items() if key not in cfg.output_features
+        }
     kwargs["config"] = cfg
 
+    # 如果可用，传递数据集统计信息给策略（某些策略如SARM需要）
     # Pass dataset_stats to the policy if available (needed for some policies like SARM)
     if ds_meta is not None and hasattr(ds_meta, "stats"):
+        # 这些统计数据包括均值、标准差等，用于归一化输入数据
         kwargs["dataset_stats"] = ds_meta.stats
 
     if ds_meta is not None:
         kwargs["dataset_meta"] = ds_meta
 
+    # 检查PEFT配置是否正确
     if not cfg.pretrained_path and cfg.use_peft:
         raise ValueError(
             "Instantiating a policy with `use_peft=True` without a checkpoint is not supported since that requires "
             "the PEFT config parameters to be set. For training with PEFT, see `lerobot_train.py` on how to do that."
         )
 
+    # 根据不同情况加载策略：
     if cfg.pretrained_path and not cfg.use_peft:
+        # 加载预训练策略并根据需要覆盖配置
         # Load a pretrained policy and override the config if needed (for example, if there are inference-time
         # hyperparameters that we want to vary).
         kwargs["pretrained_name_or_path"] = cfg.pretrained_path
+        # 例如：加载已经训练好的 ACT 模型，可以直接用于推理
         policy = policy_cls.from_pretrained(**kwargs)
     elif cfg.pretrained_path and cfg.use_peft:
+        # 加载预训练的 PEFT 模型（LoRA 适配器）
         # Load a pretrained PEFT model on top of the policy. The pretrained path points to the folder/repo
         # of the adapter and the adapter's config contains the path to the base policy. So we need the
         # adapter config first, then load the correct policy and then apply PEFT.
@@ -526,18 +585,25 @@ def make_policy(
                 "the adapter was trained."
             )
 
+        # 例如：加载基础 ACT 模型，然后应用微调过的适配器
         policy = policy_cls.from_pretrained(**kwargs)
-        policy = PeftModel.from_pretrained(policy, peft_pretrained_path, config=peft_config)
+        policy = PeftModel.from_pretrained(
+            policy, peft_pretrained_path, config=peft_config
+        )
 
     else:
-        # Make a fresh policy.
+        # 创建一个全新的策略
+        # 例如：从头开始创建一个新的策略模型，通常用于训练阶段
         policy = policy_cls(**kwargs)
 
+    # 将策略移动到指定设备上
     policy.to(cfg.device)
     assert isinstance(policy, torch.nn.Module)
 
+    # 可选：编译策略以提高性能
     # policy = torch.compile(policy, mode="reduce-overhead")
 
+    # 如果没有重命名映射，则验证视觉特征一致性
     if not rename_map:
         validate_visual_features_consistency(cfg, features)
         # TODO: (jadechoghari) - add a check_state(cfg, features) and check_action(cfg, features)
@@ -563,7 +629,9 @@ def _get_policy_cls_from_policy_name(name: str) -> type[PreTrainedConfig]:
     config_cls = PreTrainedConfig.get_choice_class(name)
     config_cls_name = config_cls.__name__
 
-    model_name = config_cls_name.removesuffix("Config")  # e.g., DiffusionConfig -> Diffusion
+    model_name = config_cls_name.removesuffix(
+        "Config"
+    )  # e.g., DiffusionConfig -> Diffusion
     if model_name == config_cls_name:
         raise ValueError(
             f"The config class name '{config_cls_name}' does not follow the expected naming convention."

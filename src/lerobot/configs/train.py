@@ -36,7 +36,7 @@ TRAIN_CONFIG_NAME = "train_config.json"
 @dataclass
 class TrainPipelineConfig(HubMixin):
     dataset: DatasetConfig
-    env: envs.EnvConfig | None = None
+    env: envs.EnvConfig | None = None  # 是否启用仿真环境
     policy: PreTrainedConfig | None = None
     # Set `dir` to where you would like to save all of the run outputs. If you run another training session
     # with the same value for `dir` its contents will be overwritten unless you set `resume` to true.
@@ -57,8 +57,8 @@ class TrainPipelineConfig(HubMixin):
     num_workers: int = 4
     batch_size: int = 8
     steps: int = 100_000
-    eval_freq: int = 20_000
-    log_freq: int = 200
+    eval_freq: int = 20_000  # 定期评估的频率, 每个 20000 次评估一次
+    log_freq: int = 200  # 定期输出日志的频率, 每个 200 次输出一次
     tolerance_s: float = 1e-4
     save_checkpoint: bool = True
     # Checkpoint is saved every `save_freq` training iterations and after the last training step.
@@ -72,7 +72,9 @@ class TrainPipelineConfig(HubMixin):
 
     # RA-BC (Reward-Aligned Behavior Cloning) parameters
     use_rabc: bool = False  # Enable reward-weighted training
-    rabc_progress_path: str | None = None  # Path to precomputed SARM progress parquet file
+    rabc_progress_path: str | None = (
+        None  # Path to precomputed SARM progress parquet file
+    )
     rabc_kappa: float = 0.01  # Hard threshold for high-quality samples
     rabc_epsilon: float = 1e-6  # Small constant for numerical stability
     rabc_head_mode: str | None = "sparse"  # For dual-head models: "sparse" or "dense"
@@ -84,10 +86,13 @@ class TrainPipelineConfig(HubMixin):
     def validate(self) -> None:
         # HACK: We parse again the cli args here to get the pretrained paths if there was some.
         policy_path = parser.get_path_arg("policy")
+
         if policy_path:
             # Only load the policy config
             cli_overrides = parser.get_cli_overrides("policy")
-            self.policy = PreTrainedConfig.from_pretrained(policy_path, cli_overrides=cli_overrides)
+            self.policy = PreTrainedConfig.from_pretrained(
+                policy_path, cli_overrides=cli_overrides
+            )
             self.policy.pretrained_path = Path(policy_path)
         elif self.resume:
             # The entire train config is already loaded, we just need to get the checkpoint dir
@@ -119,7 +124,11 @@ class TrainPipelineConfig(HubMixin):
             else:
                 self.job_name = f"{self.env.type}_{self.policy.type}"
 
-        if not self.resume and isinstance(self.output_dir, Path) and self.output_dir.is_dir():
+        if (
+            not self.resume
+            and isinstance(self.output_dir, Path)
+            and self.output_dir.is_dir()
+        ):
             raise FileExistsError(
                 f"Output directory {self.output_dir} already exists and resume is {self.resume}. "
                 f"Please change your output directory so that {self.output_dir} is not overwritten."
@@ -130,10 +139,16 @@ class TrainPipelineConfig(HubMixin):
             self.output_dir = Path("outputs/train") / train_dir
 
         if isinstance(self.dataset.repo_id, list):
-            raise NotImplementedError("LeRobotMultiDataset is not currently implemented.")
+            raise NotImplementedError(
+                "LeRobotMultiDataset is not currently implemented."
+            )
 
-        if not self.use_policy_training_preset and (self.optimizer is None or self.scheduler is None):
-            raise ValueError("Optimizer and Scheduler must be set when the policy presets are not used.")
+        if not self.use_policy_training_preset and (
+            self.optimizer is None or self.scheduler is None
+        ):
+            raise ValueError(
+                "Optimizer and Scheduler must be set when the policy presets are not used."
+            )
         elif self.use_policy_training_preset and not self.resume:
             self.optimizer = self.policy.get_optimizer_preset()
             self.scheduler = self.policy.get_scheduler_preset()
@@ -147,9 +162,13 @@ class TrainPipelineConfig(HubMixin):
             # Auto-detect from dataset path
             repo_id = self.dataset.repo_id
             if self.dataset.root:
-                self.rabc_progress_path = str(Path(self.dataset.root) / "sarm_progress.parquet")
+                self.rabc_progress_path = str(
+                    Path(self.dataset.root) / "sarm_progress.parquet"
+                )
             else:
-                self.rabc_progress_path = f"hf://datasets/{repo_id}/sarm_progress.parquet"
+                self.rabc_progress_path = (
+                    f"hf://datasets/{repo_id}/sarm_progress.parquet"
+                )
 
     @classmethod
     def __get_path_fields__(cls) -> list[str]:
@@ -160,7 +179,10 @@ class TrainPipelineConfig(HubMixin):
         return draccus.encode(self)  # type: ignore[no-any-return]  # because of the third-party library draccus uses Any as the return type
 
     def _save_pretrained(self, save_directory: Path) -> None:
-        with open(save_directory / TRAIN_CONFIG_NAME, "w") as f, draccus.config_type("json"):
+        with (
+            open(save_directory / TRAIN_CONFIG_NAME, "w") as f,
+            draccus.config_type("json"),
+        ):
             draccus.dump(self, f, indent=4)
 
     @classmethod

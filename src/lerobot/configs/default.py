@@ -53,10 +53,14 @@ class WandBConfig:
     enable: bool = False
     # Set to true to disable saving an artifact despite training.save_checkpoint=True
     disable_artifact: bool = False
-    project: str = "lerobot"
-    entity: str | None = None
-    notes: str | None = None
-    run_id: str | None = None
+    project: str = "lerobot"  # 指定实验属于哪个项目，每次需要重新指定吗？
+    entity: str | None = None  # WandB 用户实体名称
+    notes: str | None = None  # 实验备注信息
+    run_id: str | None = None  # 实验运行 ID
+    # 说明:
+    #   --- 'online': 实时上传数据到 WandB 服务器
+    #   --- 'offline': 本地保存数据，稍后上传
+    #   --- 'disabled': 完全不使用 WandB (等同于 enable=False)
     mode: str | None = None  # Allowed values: 'online', 'offline' 'disabled'. Defaults to 'online'
     add_tags: bool = True  # If True, save configuration as tags in the WandB run.
 

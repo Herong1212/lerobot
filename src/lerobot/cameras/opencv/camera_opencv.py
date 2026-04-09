@@ -130,7 +130,9 @@ class OpenCVCamera(Camera):
 
     @property
     def is_connected(self) -> bool:
-        """Checks if the camera is currently connected and opened."""
+        """
+        Checks if the camera is currently connected and opened.
+        """
         return isinstance(self.videocapture, cv2.VideoCapture) and self.videocapture.isOpened()
 
     @check_if_already_connected

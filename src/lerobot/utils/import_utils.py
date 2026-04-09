@@ -145,30 +145,48 @@ def make_device_from_device_class(config: ChoiceRegistry) -> Any:
 
 def register_third_party_plugins() -> None:
     """
-    Discover and import third-party LeRobot plugins so they can register themselves.
+    发现并导入第三方 LeRobot 插件，以便它们可以注册自己。
 
     This function uses `importlib.metadata` to find packages installed in the environment
     (including editable installs) starting with 'lerobot_robot_', 'lerobot_camera_',
     'lerobot_teleoperator_', or 'lerobot_policy_' and imports them.
+
+    此函数使用 `importlib.metadata` 查找环境中安装（包括以 -e . 安装方式安装的）的以 'lerobot_robot_'、'lerobot_camera_'、
+    'lerobot_teleoperator_' 或 'lerobot_policy_' 开头的包并导入它们。
     """
+    # 定义插件包名称的前缀元组，用于识别LeRobot插件
     prefixes = ("lerobot_robot_", "lerobot_camera_", "lerobot_teleoperator_", "lerobot_policy_")
+    # 创建一个列表，用于存储成功导入的插件名称
     imported: list[str] = []
+    # 创建一个列表，用于存储导入失败的插件名称
     failed: list[str] = []
 
     def attempt_import(module_name: str):
+        # 尝试导入指定模块的内部函数
         try:
+            # 使用importlib实际导入模块
             importlib.import_module(module_name)
+            # 将成功导入的模块添加到imported列表
             imported.append(module_name)
+            # 记录成功导入的插件日志
             logging.info("Imported third-party plugin: %s", module_name)
         except Exception:
+            # 如果导入过程中出现异常，则记录错误日志
             logging.exception("Could not import third-party plugin: %s", module_name)
+            # 将导入失败的模块添加到failed列表
             failed.append(module_name)
 
+    # 遍历所有已安装的包分布
     for dist in importlib.metadata.distributions():
+        # 获取包的名称
         dist_name = dist.metadata.get("Name")
+
+        # 检查包名称是否存在
         if not dist_name:
             continue
+        # 检查包名称是否以定义的前缀之一开始
         if dist_name.startswith(prefixes):
             attempt_import(dist_name)
 
+    # 记录调试信息，显示导入插件的摘要统计
     logging.debug("Third-party plugin import summary: imported=%s failed=%s", imported, failed)

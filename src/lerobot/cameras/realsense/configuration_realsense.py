@@ -53,9 +53,9 @@ class RealSenseCameraConfig(CameraConfig):
         - For `fps`, `width` and `height`, either all of them need to be set, or none of them.
     """
 
-    serial_number_or_name: str
+    serial_number_or_name: str # 使用设备序列号来识别设备
     color_mode: ColorMode = ColorMode.RGB
-    use_depth: bool = False
+    use_depth: bool = False  #  # 是否启用深度数据流
     rotation: Cv2Rotation = Cv2Rotation.NO_ROTATION
     warmup_s: int = 1
 
@@ -63,8 +63,7 @@ class RealSenseCameraConfig(CameraConfig):
         self.color_mode = ColorMode(self.color_mode)
         self.rotation = Cv2Rotation(self.rotation)
 
+        # 验证 fps、width、height 要么全设置，要么全不设置
         values = (self.fps, self.width, self.height)
         if any(v is not None for v in values) and any(v is None for v in values):
-            raise ValueError(
-                "For `fps`, `width` and `height`, either all of them need to be set, or none of them."
-            )
+            raise ValueError("For `fps`, `width` and `height`, either all of them need to be set, or none of them.")

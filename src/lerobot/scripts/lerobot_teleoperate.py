@@ -59,7 +59,9 @@ from pprint import pformat
 import rerun as rr
 
 from lerobot.cameras.opencv.configuration_opencv import OpenCVCameraConfig  # noqa: F401
-from lerobot.cameras.realsense.configuration_realsense import RealSenseCameraConfig  # noqa: F401
+from lerobot.cameras.realsense.configuration_realsense import (
+    RealSenseCameraConfig,
+)  # noqa: F401
 from lerobot.cameras.zmq.configuration_zmq import ZMQCameraConfig  # noqa: F401
 from lerobot.configs import parser
 from lerobot.processor import (
@@ -124,13 +126,20 @@ class TeleoperateConfig:
     display_compressed_images: bool = False
 
 
+# NOTE 遥操主函数
 def teleop_loop(
     teleop: Teleoperator,
     robot: Robot,
     fps: int,
-    teleop_action_processor: RobotProcessorPipeline[tuple[RobotAction, RobotObservation], RobotAction],
-    robot_action_processor: RobotProcessorPipeline[tuple[RobotAction, RobotObservation], RobotAction],
-    robot_observation_processor: RobotProcessorPipeline[RobotObservation, RobotObservation],
+    teleop_action_processor: RobotProcessorPipeline[
+        tuple[RobotAction, RobotObservation], RobotAction
+    ],
+    robot_action_processor: RobotProcessorPipeline[
+        tuple[RobotAction, RobotObservation], RobotAction
+    ],
+    robot_observation_processor: RobotProcessorPipeline[
+        RobotObservation, RobotObservation
+    ],
     display_data: bool = False,
     duration: float | None = None,
     display_compressed_images: bool = False,
@@ -209,17 +218,26 @@ def teleop_loop(
 def teleoperate(cfg: TeleoperateConfig):
     init_logging()
     logging.info(pformat(asdict(cfg)))
+
     if cfg.display_data:
-        init_rerun(session_name="teleoperation", ip=cfg.display_ip, port=cfg.display_port)
+        init_rerun(
+            session_name="teleoperation", ip=cfg.display_ip, port=cfg.display_port
+        )
     display_compressed_images = (
         True
-        if (cfg.display_data and cfg.display_ip is not None and cfg.display_port is not None)
+        if (
+            cfg.display_data
+            and cfg.display_ip is not None
+            and cfg.display_port is not None
+        )
         else cfg.display_compressed_images
     )
 
     teleop = make_teleoperator_from_config(cfg.teleop)
     robot = make_robot_from_config(cfg.robot)
-    teleop_action_processor, robot_action_processor, robot_observation_processor = make_default_processors()
+    teleop_action_processor, robot_action_processor, robot_observation_processor = (
+        make_default_processors()
+    )
 
     teleop.connect()
     robot.connect()

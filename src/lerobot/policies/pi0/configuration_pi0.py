@@ -34,7 +34,9 @@ class PI0Config(PreTrainedConfig):
     dtype: str = "float32"  # Options: "bfloat16", "float32"
 
     n_obs_steps: int = 1
-    chunk_size: int = 50  # Number of action steps to predict, in openpi called "action_horizon"
+    chunk_size: int = (
+        50  # Number of action steps to predict, in openpi called "action_horizon"
+    )
     n_action_steps: int = 50  # Number of action steps to execute
 
     # Shorter state and action vectors will be padded to these dimensions
@@ -71,14 +73,18 @@ class PI0Config(PreTrainedConfig):
     )
 
     # Training settings
-    gradient_checkpointing: bool = False  # Enable gradient checkpointing for memory optimization
+    gradient_checkpointing: bool = (
+        False  # Enable gradient checkpointing for memory optimization
+    )
     compile_model: bool = False  # Whether to use torch.compile for model optimization
     compile_mode: str = "max-autotune"  # Torch compile mode
     device: str | None = None  # Device to use for the model (None = auto-detect)
 
     # Finetuning settings
     freeze_vision_encoder: bool = False  # Freeze only the vision encoder
-    train_expert_only: bool = False  # Freeze entire VLM, train only action expert and projections
+    train_expert_only: bool = (
+        False  # Freeze entire VLM, train only action expert and projections
+    )
 
     # Optimizer settings: see openpi `AdamW``
     optimizer_lr: float = 2.5e-5  # see openpi `CosineDecaySchedule: peak_lr`
@@ -109,7 +115,9 @@ class PI0Config(PreTrainedConfig):
             raise ValueError(f"Invalid paligemma_variant: {self.paligemma_variant}")
 
         if self.action_expert_variant not in ["gemma_300m", "gemma_2b"]:
-            raise ValueError(f"Invalid action_expert_variant: {self.action_expert_variant}")
+            raise ValueError(
+                f"Invalid action_expert_variant: {self.action_expert_variant}"
+            )
 
         if self.dtype not in ["bfloat16", "float32"]:
             raise ValueError(f"Invalid dtype: {self.dtype}")

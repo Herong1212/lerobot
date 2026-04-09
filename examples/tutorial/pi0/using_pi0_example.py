@@ -21,9 +21,7 @@ def main():
     model_id = "lerobot/pi0_base"
 
     # step1 加载预训练模型
-    model = PI0Policy.from_pretrained(
-        model_id, cache_dir="examples/tutorial/pi0/pi0_base"
-    )
+    model = PI0Policy.from_pretrained(model_id)
 
     # step2. 创建预处理器和后处理器
     # 关键！它会自动根据模型卡片里的信息，处理图像缩放、均值归一化等

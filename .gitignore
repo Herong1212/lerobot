@@ -180,3 +180,12 @@ outputs/
 
 # models
 checkpoints
+models-*
+
+# datasets
+datasets-*
+
+# others
+*.rrd
+.zread
+*.hdf5

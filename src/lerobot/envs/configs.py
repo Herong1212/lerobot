@@ -41,9 +41,11 @@ from lerobot.utils.constants import (
 
 @dataclass
 class EnvConfig(draccus.ChoiceRegistry, abc.ABC):
-    task: str | None = None
+    task: str | None = None  # 具体的任务名称
     fps: int = 30
+    # 定义了环境的 物理维度。例如，动作是几维的，图像分辨率是多少。
     features: dict[str, PolicyFeature] = field(default_factory=dict)
+    # 非常关键。负责名称映射
     features_map: dict[str, str] = field(default_factory=dict)
     max_parallel_tasks: int = 1
     disable_env_checker: bool = True
@@ -57,6 +59,7 @@ class EnvConfig(draccus.ChoiceRegistry, abc.ABC):
         """Package name to import if environment not found in gym registry"""
         return f"gym_{self.type}"
 
+    # 拼接出符合 Gymnasium 标准的 ID（例如 gym_aloha/AlohaInsertion-v0）
     @property
     def gym_id(self) -> str:
         """ID string used in gym.make() to instantiate the environment"""
@@ -76,7 +79,9 @@ class HubEnvConfig(EnvConfig):
     The hub_path points to a repository containing an env.py with a make_env function.
     """
 
-    hub_path: str | None = None  # required: e.g., "username/repo" or "username/repo@branch:file.py"
+    hub_path: str | None = (
+        None  # required: e.g., "username/repo" or "username/repo@branch:file.py"
+    )
 
     @property
     def gym_kwargs(self) -> dict:
@@ -89,13 +94,14 @@ class HubEnvConfig(EnvConfig):
 class AlohaEnv(EnvConfig):
     task: str | None = "AlohaInsertion-v0"
     fps: int = 50
-    episode_length: int = 400
-    obs_type: str = "pixels_agent_pos"
+    episode_length: int = 400  # 最大 episode 长度：400 步
+    obs_type: str = "pixels_agent_pos"  # 观察类型：pixels_agent_pos
     observation_height: int = 480
     observation_width: int = 640
     render_mode: str = "rgb_array"
     features: dict[str, PolicyFeature] = field(
         default_factory=lambda: {
+            # 动作空间：14维（复杂操作）
             ACTION: PolicyFeature(type=FeatureType.ACTION, shape=(14,)),
         }
     )
@@ -111,12 +117,16 @@ class AlohaEnv(EnvConfig):
     def __post_init__(self):
         if self.obs_type == "pixels":
             self.features["top"] = PolicyFeature(
-                type=FeatureType.VISUAL, shape=(self.observation_height, self.observation_width, 3)
+                type=FeatureType.VISUAL,
+                shape=(self.observation_height, self.observation_width, 3),
             )
         elif self.obs_type == "pixels_agent_pos":
-            self.features["agent_pos"] = PolicyFeature(type=FeatureType.STATE, shape=(14,))
+            self.features["agent_pos"] = PolicyFeature(
+                type=FeatureType.STATE, shape=(14,)
+            )
             self.features["pixels/top"] = PolicyFeature(
-                type=FeatureType.VISUAL, shape=(self.observation_height, self.observation_width, 3)
+                type=FeatureType.VISUAL,
+                shape=(self.observation_height, self.observation_width, 3),
             )
 
     @property
@@ -133,8 +143,8 @@ class AlohaEnv(EnvConfig):
 class PushtEnv(EnvConfig):
     task: str | None = "PushT-v0"
     fps: int = 10
-    episode_length: int = 300
-    obs_type: str = "pixels_agent_pos"
+    episode_length: int = 300  # 最大 episode 长度
+    obs_type: str = "pixels_agent_pos"  # 观察类型：pixels_agent_pos（图像+位置）
     render_mode: str = "rgb_array"
     visualization_width: int = 384
     visualization_height: int = 384
@@ -142,7 +152,9 @@ class PushtEnv(EnvConfig):
     observation_width: int = 384
     features: dict[str, PolicyFeature] = field(
         default_factory=lambda: {
+            # 动作空间：2维（2D推力）
             ACTION: PolicyFeature(type=FeatureType.ACTION, shape=(2,)),
+            # 状态空间：2维（2D位置）
             "agent_pos": PolicyFeature(type=FeatureType.STATE, shape=(2,)),
         }
     )
@@ -158,10 +170,13 @@ class PushtEnv(EnvConfig):
     def __post_init__(self):
         if self.obs_type == "pixels_agent_pos":
             self.features["pixels"] = PolicyFeature(
-                type=FeatureType.VISUAL, shape=(self.observation_height, self.observation_width, 3)
+                type=FeatureType.VISUAL,
+                shape=(self.observation_height, self.observation_width, 3),
             )
         elif self.obs_type == "environment_state_agent_pos":
-            self.features["environment_state"] = PolicyFeature(type=FeatureType.ENV, shape=(16,))
+            self.features["environment_state"] = PolicyFeature(
+                type=FeatureType.ENV, shape=(16,)
+            )
 
     @property
     def gym_kwargs(self) -> dict:
@@ -266,6 +281,8 @@ class LiberoEnv(EnvConfig):
     episode_length: int | None = None
     obs_type: str = "pixels_agent_pos"
     render_mode: str = "rgb_array"
+
+    # 定义了两个相机 Key：agentview (全景) 和 eye_in_hand (手眼相机)。
     camera_name: str = "agentview_image,robot0_eye_in_hand_image"
     init_states: bool = True
     camera_name_mapping: dict[str, str] | None = None
@@ -273,6 +290,7 @@ class LiberoEnv(EnvConfig):
     observation_width: int = 360
     features: dict[str, PolicyFeature] = field(
         default_factory=lambda: {
+            # 动作空间：7维（机器人关节）
             ACTION: PolicyFeature(type=FeatureType.ACTION, shape=(7,)),
         }
     )
@@ -295,17 +313,21 @@ class LiberoEnv(EnvConfig):
     def __post_init__(self):
         if self.obs_type == "pixels":
             self.features[LIBERO_KEY_PIXELS_AGENTVIEW] = PolicyFeature(
-                type=FeatureType.VISUAL, shape=(self.observation_height, self.observation_width, 3)
+                type=FeatureType.VISUAL,
+                shape=(self.observation_height, self.observation_width, 3),
             )
             self.features[LIBERO_KEY_PIXELS_EYE_IN_HAND] = PolicyFeature(
-                type=FeatureType.VISUAL, shape=(self.observation_height, self.observation_width, 3)
+                type=FeatureType.VISUAL,
+                shape=(self.observation_height, self.observation_width, 3),
             )
         elif self.obs_type == "pixels_agent_pos":
             self.features[LIBERO_KEY_PIXELS_AGENTVIEW] = PolicyFeature(
-                type=FeatureType.VISUAL, shape=(self.observation_height, self.observation_width, 3)
+                type=FeatureType.VISUAL,
+                shape=(self.observation_height, self.observation_width, 3),
             )
             self.features[LIBERO_KEY_PIXELS_EYE_IN_HAND] = PolicyFeature(
-                type=FeatureType.VISUAL, shape=(self.observation_height, self.observation_width, 3)
+                type=FeatureType.VISUAL,
+                shape=(self.observation_height, self.observation_width, 3),
             )
             self.features[LIBERO_KEY_EEF_POS] = PolicyFeature(
                 type=FeatureType.STATE,
@@ -340,7 +362,10 @@ class LiberoEnv(EnvConfig):
 
     @property
     def gym_kwargs(self) -> dict:
-        kwargs: dict[str, Any] = {"obs_type": self.obs_type, "render_mode": self.render_mode}
+        kwargs: dict[str, Any] = {
+            "obs_type": self.obs_type,
+            "render_mode": self.render_mode,
+        }
         if self.task_ids is not None:
             kwargs["task_ids"] = self.task_ids
         return kwargs
@@ -371,11 +396,17 @@ class MetaworldEnv(EnvConfig):
 
     def __post_init__(self):
         if self.obs_type == "pixels":
-            self.features["top"] = PolicyFeature(type=FeatureType.VISUAL, shape=(480, 480, 3))
+            self.features["top"] = PolicyFeature(
+                type=FeatureType.VISUAL, shape=(480, 480, 3)
+            )
 
         elif self.obs_type == "pixels_agent_pos":
-            self.features["agent_pos"] = PolicyFeature(type=FeatureType.STATE, shape=(4,))
-            self.features["pixels/top"] = PolicyFeature(type=FeatureType.VISUAL, shape=(480, 480, 3))
+            self.features["agent_pos"] = PolicyFeature(
+                type=FeatureType.STATE, shape=(4,)
+            )
+            self.features["pixels/top"] = PolicyFeature(
+                type=FeatureType.VISUAL, shape=(480, 480, 3)
+            )
 
         else:
             raise ValueError(f"Unsupported obs_type: {self.obs_type}")
@@ -388,13 +419,16 @@ class MetaworldEnv(EnvConfig):
         }
 
 
+# NOTE NVIDIA 最近力推的 Isaac Lab 仿真，状态维度高达 54 维，动作 36 维，适合复杂的人形机器人抓取研究。
+# NOTE Isaaclab Arena 是NVIDIA开发的一个基于物理模拟的机器人仿真环境，专门用于机器人任务的训练和评估。
+# 它基于NVIDIA Isaac Sim，提供高保真的物理模拟和视觉渲染。
 @EnvConfig.register_subclass("isaaclab_arena")
 @dataclass
 class IsaaclabArenaEnv(HubEnvConfig):
     hub_path: str = "nvidia/isaaclab-arena-envs"
-    episode_length: int = 300
+    episode_length: int = 300  # 最大 episode 长度
     num_envs: int = 1
-    embodiment: str | None = "gr1_pink"
+    embodiment: str | None = "gr1_pink"  # 默认机器人，傅里叶的 GR1_pink 人形机器人
     object: str | None = "power_drill"
     mimic: bool = False
     teleop_device: str | None = None
@@ -405,9 +439,23 @@ class IsaaclabArenaEnv(HubEnvConfig):
     headless: bool = False
     enable_pinocchio: bool = True
     environment: str | None = "gr1_microwave"
+    
+    # ps 默认任务："伸手到微波炉并打开它"
     task: str | None = "Reach out to the microwave and open it."
-    state_dim: int = 54
-    action_dim: int = 36
+    
+    state_dim: int = 54 # 状态维度
+    # 状态空间可能包括：
+    # - 机器人关节位置和速度
+    # - 末端执行器位置和姿态
+    # - 物体位置和姿态
+    # - 视觉特征（如果有的话）
+    action_dim: int = 36  # 动作维度
+    # 根据配置，动作空间可能包括：
+    # - 机器人关节位置控制（多个关节）
+    # - 末端执行器位置控制
+    # - 抓取器控制
+    # - 移动机器人控制（如果有的话）
+
     camera_height: int = 512
     camera_width: int = 512
     video: bool = False
@@ -433,11 +481,15 @@ class IsaaclabArenaEnv(HubEnvConfig):
             self.kwargs = None
 
         # Set action feature
-        self.features[ACTION] = PolicyFeature(type=FeatureType.ACTION, shape=(self.action_dim,))
+        self.features[ACTION] = PolicyFeature(
+            type=FeatureType.ACTION, shape=(self.action_dim,)
+        )
         self.features_map[ACTION] = ACTION
 
         # Set state feature
-        self.features[OBS_STATE] = PolicyFeature(type=FeatureType.STATE, shape=(self.state_dim,))
+        self.features[OBS_STATE] = PolicyFeature(
+            type=FeatureType.STATE, shape=(self.state_dim,)
+        )
         self.features_map[OBS_STATE] = OBS_STATE
 
         # Add camera features for each camera key

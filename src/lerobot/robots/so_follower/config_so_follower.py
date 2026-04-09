@@ -37,15 +37,24 @@ class SOFollowerConfig:
 
     # cameras
     cameras: dict[str, CameraConfig] = field(default_factory=dict)
+    # 命令行传参: --robot.cameras="{laptop: {type: opencv, index_or_path: 0, width: 640, height: 480, fps: 30}}"`
 
     # Set to `True` for backward compatibility with previous policies/dataset
     use_degrees: bool = True
 
 
+# NOTE 将 SOFollowerRobotConfig 注册为 RobotConfig 的子类，注册名是 "so100_follower"
 @RobotConfig.register_subclass("so101_follower")
 @RobotConfig.register_subclass("so100_follower")
 @dataclass
 class SOFollowerRobotConfig(RobotConfig, SOFollowerConfig):
+    # 继承自 RobotConfig（基类，有 register_subclass）
+    # 继承自 SOFollowerConfig（普通 dataclass，无注册）
+
+    # 当 draccus 解析 --robot.type=so100_follower 时：
+    # 1. 查找 RobotConfig 的子类中名为 "so100_follower" 的类
+    # 2. 找到 SOFollowerRobotConfig
+    # 3. 实例化 SOFollowerRobotConfig
     pass
 
 

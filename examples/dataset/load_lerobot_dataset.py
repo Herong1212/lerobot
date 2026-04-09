@@ -54,25 +54,28 @@ def main():
 
     # step2 从 Hugging Face Hub 搜索社区数据集
     # You can also browse through the datasets created/ported by the community on the hub using the hub api:
-    # hub_api = HfApi()
-    # repo_ids = [
-    #     info.id
-    #     for info in hub_api.list_datasets(
-    #         task_categories="robotics",
-    #         filter=["LeRobot"],
-    #         limit=10,  # 强制限制返回数量，减少通信时间
-    #     )
-    # ]
-    # pprint(repo_ids)
+    hub_api = (
+        HfApi()
+    )  # 初始化 Hugging Face Hub 的 API 客户端，用于调用 Hub 的数据集查询接口
+    repo_ids = [
+        info.id
+        for info in hub_api.list_datasets(
+            task_categories="robotics",
+            filter=["LeRobot"],
+            limit=10,  # 强制限制返回数量，减少通信时间
+        )
+    ]
+    pprint(repo_ids)
 
     # Or simply explore them in your web browser directly at:
     # https://huggingface.co/datasets?other=LeRobot
+    # 功能：提供 Hub 数据集的网页链接，用户可通过浏览器可视化浏览数据集详情（如描述、示例、使用说明）
 
     # step3 加载数据集的元数据 (Metadata)
     print("# Loading the dataset meta...")
     # Let's take this one for this example
     repo_id = "lerobot/aloha_mobile_cabinet"
-    # 仅下载极小的 JSON 配置文件，不下载庞大的视频/图像数据:
+    # 实例化一个数据集元数据对象，仅下载数据集的元数据文件（如 dataset_info.json 配置文件），不下载图像、动作等大文件，速度极快
     # 返回 ds_meta 对象，包含数据集结构信息，详细内容见 aloha_mobile_cabinet_ds_meta.json
     ds_meta = LeRobotDatasetMetadata(repo_id)
 
@@ -91,6 +94,8 @@ def main():
 
     print("Tasks:")
     print(ds_meta.tasks)
+
+    # * 比较重要！数据集的所有模态字段（如 action 动作、observation.state 关节状态、摄像头图像）及格式（如形状、数据类型）
     print("Features:")
     pprint(ds_meta.features)
 
@@ -106,7 +111,7 @@ def main():
 
     print("# Loading the dataset...")
     # step4 加载实际数据集 (Dataset)
-    # case1 加载特定子集（只下载第 0, 10, 11, 23 回合的数据）：
+    # case1 加载特定 episode（只下载第 0, 10, 11, 23 回合的数据）：
     # dataset = LeRobotDataset(repo_id, episodes=[0, 10, 11, 23], download_videos=True)
 
     # print(f"Selected episodes: {dataset.episodes}")  # [0, 10, 11, 23]
@@ -151,6 +156,7 @@ def main():
         dataset.meta.episodes["dataset_from_index"]
     )  # Column([0, 1500, 3000, 4500, 6000, ...])
     # ...[episode_index]：是对上面那个列表进行取值，即如果想看第 0 个回合，就取索引 0
+    # 元数据中存储每个 episode 的帧索引范围（起始帧 ~ 结束帧的下一个索引）
     from_idx = dataset.meta.episodes["dataset_from_index"][episode_index]  # 0
     to_idx = dataset.meta.episodes["dataset_to_index"][episode_index]  # 1500
 
@@ -213,6 +219,7 @@ def main():
     # For many machine learning applications we need to load the history of past observations or trajectories of
     # future actions. Our datasets can load previous and future frames for each key/modality, using timestamps
     # differences with the current loaded frame. For instance:
+    # 定义每个模态需要加载的 “时序偏移”（单位：秒），用于获取当前帧的历史或未来数据，适配机器人时序建模需求（如论文 3.1.5 节动作块预测）
     delta_timestamps = {
         # 加载 4 张图像：取当前时刻、前 0.2s、前 0.5s、前 1s 的 4 张图
         camera_key: [-1, -0.5, -0.20, 0],
@@ -222,7 +229,7 @@ def main():
         "action": [t / dataset.fps for t in range(64)],
     }
     # Note that in any case, these delta_timestamps values need to be multiples of (1/fps) so that added to any
-    # timestamp, you still get a valid timestamp.
+    # timestamp, you still get a valid timestamp. 注意：偏移量必须是 1/fps 的整数倍（如 30 FPS 下，最小偏移是 1/30 ≈ 0.033 秒），确保时序对齐
 
     # 重新实例化数据集对象，此时会添加 delta_timestamps 所指定的数据
     dataset = LeRobotDataset(repo_id, delta_timestamps=delta_timestamps)

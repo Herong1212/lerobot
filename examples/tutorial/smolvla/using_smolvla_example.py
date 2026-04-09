@@ -12,9 +12,10 @@ MAX_STEPS_PER_EPISODE = 20
 
 
 def main():
-    device = torch.device("mps")  # or "cuda" or "cpu"
+    device = torch.device("cuda")  # or "cuda" or "cpu"
     model_id = "lerobot/smolvla_base"
 
+    # ! 这里会下载两个模型：models--HuggingFaceTB--SmolVLM2-500M-Video-Instruct、models--lerobot--smolvla_base
     model = SmolVLAPolicy.from_pretrained(model_id)
 
     preprocess, postprocess = make_pre_post_processors(
@@ -38,7 +39,9 @@ def main():
         "camera2": OpenCVCameraConfig(index_or_path=1, width=640, height=480, fps=30),
     }
 
-    robot_cfg = SO100FollowerConfig(port=follower_port, id=follower_id, cameras=camera_config)
+    robot_cfg = SO100FollowerConfig(
+        port=follower_port, id=follower_id, cameras=camera_config
+    )
     robot = SO100Follower(robot_cfg)
     robot.connect()
 
@@ -54,7 +57,11 @@ def main():
         for _ in range(MAX_STEPS_PER_EPISODE):
             obs = robot.get_observation()
             obs_frame = build_inference_frame(
-                observation=obs, ds_features=dataset_features, device=device, task=task, robot_type=robot_type
+                observation=obs,
+                ds_features=dataset_features,
+                device=device,
+                task=task,
+                robot_type=robot_type,
             )
 
             obs = preprocess(obs_frame)

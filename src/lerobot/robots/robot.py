@@ -46,9 +46,18 @@ class Robot(abc.ABC):
     def __init__(self, config: RobotConfig):
         self.robot_type = self.name
         self.id = config.id
+
+        # * 保存路径
+        # HF_LEROBOT_CALIBRATION = ~/.cache/huggingface/lerobot (HuggingFace 默认缓存目录)
+        # ROBOTS = "robots" (固定字符串)
+        # {robot_name} = 机器人类型名（如 so100_follower）
+        # {robot_id} = 机器人 ID（如 black）
         self.calibration_dir = (
-            config.calibration_dir if config.calibration_dir else HF_LEROBOT_CALIBRATION / ROBOTS / self.name
+            config.calibration_dir
+            if config.calibration_dir
+            else HF_LEROBOT_CALIBRATION / ROBOTS / self.name
         )
+
         self.calibration_dir.mkdir(parents=True, exist_ok=True)
         self.calibration_fpath = self.calibration_dir / f"{self.id}.json"
         self.calibration: dict[str, MotorCalibration] = {}

@@ -32,7 +32,9 @@ from pprint import pformat
 import draccus
 
 from lerobot.cameras.opencv.configuration_opencv import OpenCVCameraConfig  # noqa: F401
-from lerobot.cameras.realsense.configuration_realsense import RealSenseCameraConfig  # noqa: F401
+from lerobot.cameras.realsense.configuration_realsense import (
+    RealSenseCameraConfig,
+)  # noqa: F401
 from lerobot.robots import (  # noqa: F401
     Robot,
     RobotConfig,
@@ -73,7 +75,7 @@ class CalibrateConfig:
         if bool(self.teleop) == bool(self.robot):
             raise ValueError("Choose either a teleop or a robot.")
 
-        self.device = self.robot if self.robot else self.teleop
+        self.device = self.robot if self.robot else self.teleop  # 指向 teleop
 
 
 @draccus.wrap()
@@ -81,14 +83,18 @@ def calibrate(cfg: CalibrateConfig):
     init_logging()
     logging.info(pformat(asdict(cfg)))
 
+    # 判断 device 类型
     if isinstance(cfg.device, RobotConfig):
         device = make_robot_from_config(cfg.device)
     elif isinstance(cfg.device, TeleoperatorConfig):
-        device = make_teleoperator_from_config(cfg.device)
+        # 这里：cfg.device 是 SO100LeaderConfig，继承自 TeleoperatorConfig
+        device = make_teleoperator_from_config(cfg.device)  # → 创建 SO100Leader 实例
 
+    # 连接设备（不进行校准）
     device.connect(calibrate=False)
 
     try:
+        # 执行校准流程
         device.calibrate()
     finally:
         device.disconnect()

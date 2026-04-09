@@ -78,7 +78,7 @@ def save_checkpoint(
     ├── pretrained_model/
     │   ├── config.json  # policy config
     │   ├── model.safetensors  # policy weights
-    │   ├── train_config.json  # train config
+    │   ├── train_config.json  # train config   即：✅ 完整训练配置
     │   ├── processor.json  # processor config (if preprocessor provided)
     │   └── step_*.safetensors  # processor state files (if any)
     └── training_state/

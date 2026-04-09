@@ -143,14 +143,15 @@ class LeRobotDataset(torch.utils.data.Dataset):
         for the README).
 
         Args:
-            repo_id (str): This is the repo id that will be used to fetch the dataset.
+            repo_id (str): This is the repo id that will be used to fetch the dataset. Locally, the dataset
+                will be stored under root/repo_id.  即: Hugging Face 数据集仓库 ID (如 lerobot/pusht)。
             root (Path | None, optional): Local directory where the dataset will be read from or downloaded
                 into. If set, all dataset files are materialized directly under this path. If not set,
                 existing local datasets are still looked up under ``$HF_LEROBOT_HOME/{repo_id}``, but Hub
                 downloads use a revision-safe snapshot cache under
                 ``$HF_LEROBOT_HOME/hub``.
             episodes (list[int] | None, optional): If specified, this will only load episodes specified by
-                their episode_index in this list. Defaults to None.
+                their episode_index in this list. Defaults to None. 即： 如果指定则仅加载指定的 episode, 若不指定则加载整个数据集。
             image_transforms (Callable | None, optional): You can pass standard v2 image transforms from
                 torchvision.transforms.v2 here which will be applied to visual modalities (whether they come
                 from videos or images). Defaults to None.
