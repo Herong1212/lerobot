@@ -1,6 +1,6 @@
 import dotenv
 
-dotenv.load_dotenv("/home/robot/lerobot/.env")
+dotenv.load_dotenv(".env")
 
 import torch
 

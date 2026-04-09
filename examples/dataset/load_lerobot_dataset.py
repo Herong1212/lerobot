@@ -28,7 +28,7 @@ The script ends with examples of how to batch process data using PyTorch's DataL
 
 import dotenv
 
-dotenv.load_dotenv("/home/robot/lerobot/.env")
+dotenv.load_dotenv(".env")
 
 from pprint import pprint
 

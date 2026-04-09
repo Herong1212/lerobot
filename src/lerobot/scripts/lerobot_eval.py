@@ -47,7 +47,7 @@ You can learn about the CLI options for this script in the `EvalPipelineConfig` 
 """
 import dotenv
 
-dotenv.load_dotenv("/home/robot/lerobot/.env")
+dotenv.load_dotenv(".env")
 
 import concurrent.futures as cf
 import json
