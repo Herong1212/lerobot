@@ -232,7 +232,7 @@ def make_pre_post_processors(
     PolicyProcessorPipeline[PolicyAction, PolicyAction],
 ]:
     """
-    为给定策略创建或加载预处理和后处理管道。
+    为给定策略创建或加载预处理和后处理 Pipeline
 
     This function acts as a factory. It can either load existing processor pipelines
     from a pretrained path or create new ones from scratch based on the policy
@@ -241,7 +241,7 @@ def make_pre_post_processors(
 
     Args:
         policy_cfg: 需要创建处理器的策略配置，告诉函数要为哪种类型的机器人策略创建处理器（如 ACT、TDMPC 等）
-        pretrained_path: 可选参数，指定从哪里加载预训练的处理器管道。
+        pretrained_path: 可选参数，指定从哪里加载预训练的处理器 pipeline...
             如果提供此路径，则从此路径加载管道。
         **kwargs: 处理器配置的关键字参数，定义在 [ProcessorConfigKwargs](file:///home/robot/lerobot/src/lerobot/policies/factory.py#L197-L216) 中。
 
@@ -251,7 +251,7 @@ def make_pre_post_processors(
     返回： 一个包含输入（预处理器 pre-processor) 和输出（后处理器 post-processor) 管道的元组：
                 第一个元素: PolicyProcessorPipeline[dict[str, Any], dict[str, Any]] - 预处理器管道
                     作用：处理输入数据（如摄像头图像、传感器读数等），将其转换为策略模型可以理解的格式
-                    例子：将原始图像像素值(0-255)归一化到(-1,1)范围，或者将关节角度标准化
+                    例子：将原始图像像素值 (0-255) 归一化到 (-1,1) 范围，或者将关节角度标准化
                 第二个元素: PolicyProcessorPipeline[PolicyAction, PolicyAction] - 后处理器管道
                     作用：处理策略模型输出的动作，将其转换为机器人实际可以执行的格式
                     例子：将模型输出的标准化动作值反归一化为实际关节角度或末端执行器位置

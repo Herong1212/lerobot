@@ -44,6 +44,8 @@ meta/, data/, videos/. When omitted, defaults to $HF_LEROBOT_HOME/{repo_id}.
 ```
 
 """
+import dotenv
+dotenv.load_dotenv(".env")
 
 import argparse
 import logging

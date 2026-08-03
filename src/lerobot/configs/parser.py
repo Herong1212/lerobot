@@ -216,59 +216,56 @@ def wrap(config_path: Path | None = None) -> Callable[[F], F]:
     def wrapper_outer(fn: F) -> F:
 
         # 当运行下面命令时：
-        # python src/lerobot/scripts/lerobot_record.py --robot.type=so100_follower --robot.port=/dev/ttyUSB0
+        # python src/lerobot/scripts/lerobot_train.py --dataset.repo_id=my_datasets/record17  --policy.type=pi0 --policy.push_to_hub=false ......
 
-        # sys.argv 的值是：
+        # sys.argv 存放的是：
         #   sys.argv = [
-        #   'src/lerobot/scripts/lerobot_record.py',    # sys.argv[0] - 脚本名
-        #   '--robot.type=so100_follower',              # sys.argv[1]
-        #   '--robot.port=/dev/ttyUSB0'                 # sys.argv[2]
+        #       'src/lerobot/scripts/lerobot_train.py',     # sys.argv[0] - 脚本名
+        #       '--dataset.repo_id=lerobot/pusht',          # sys.argv[1]
+        #       '--policy.type=pi0'                         # sys.argv[2]
+        #       '--policy.push_to_hub=false'                # sys.argv[3]
+        #       ......                                      # sys.argv[n]
         #   ]
 
-        # sys.argv[1:] 就是去掉脚本名后的参数列表
+        # sys.argv[1:] 就是从第二个参数到最后所有的，也就是去掉 python src/lerobot/scripts/lerobot_train.py 后的所有参数列表
         # cli_args = sys.argv[1:]
-        # ['--robot.type=so100_follower', '--robot.port=/dev/ttyUSB0', ......]
+        # ['src/lerobot/scripts/lerobot_train.py', '--dataset.repo_id=lerobot/pusht', ......]
 
         @wraps(fn)
         def wrapper_inner(*args: Any, **kwargs: Any) -> Any:
-            # 获取被装饰函数的第一个参数
-            # 对于 record(cfg: RecordConfig) 来说，
-            #   1、fn 就是 record 函数；
-            #   2、argspec.args[0] = 'cfg'  (第一个参数名，也就是 cfg: RecordConfig)；
+            # * 获取被装饰函数的输入参数，存放在数据类型为 FullArgSpec 的 argspec 中, argspec 最重要的两个属性是 args 和 annotations，下面会用到
             argspec = inspect.getfullargspec(fn)
-            # argspec.annotations = {'cfg': RecordConfig, 'return': LeRobotDataset}
-            # 所以 argtype = RecordConfig
+            # 对于 train(cfg: TrainPipelineConfig, accelerator: Accelerator | None = None) 来说，fn 就是 train 函数；
+
+            # args 是 ['cfg', 'accelerator']，存放的是 train(**) 里面传入的每个参数，这里是两个，其中，argspec.args[0] = 'cfg'  (第一个参数名，也就是 cfg: TrainPipelineConfig)；argspec.args[1] = 'cfg'  (第二个参数名，也就是 accelerator: Accelerator | None = None)
+            # ps argspec.annotations 是个 dict，存放的是 {'cfg': <class 'lerobot.configs.train.TrainPipelineConfig'>, 'accelerator': accelerate.accelerator.Accelerator | None}
+            # 所以 argspec.annotations[argspec.args[0]] 就是取出 key= cfg: TrainPipelineConfig，value= <class 'lerobot.configs.train.TrainPipelineConfig'> 的那个键值对
             argtype = argspec.annotations[argspec.args[0]]
 
-            # 检查是否已经传入了配置对象
+            # 检查是否已经传入了配置对象，len(args) = 0
             if len(args) > 0 and type(args[0]) is argtype:
-                # 如果已经传入，直接使用
-                cfg = args[0]  # * 使用传入的对象
+                cfg = args[0]
                 args = args[1:]
             else:
                 # 否则从命令行解析
                 cli_args = sys.argv[1:]  # * 获取所有命令行参数
-                # 以 python src/lerobot/scripts/lerobot_record.py
-                # --robot.type=so100_follower --robot.port=/dev/tty.usbmodem58760431541
-                # --robot.cameras="{laptop: {type: opencv, index_or_path: 0, width: 640, height: 480, fps: 30}}"
-                # --robot.id=black --dataset.repo_id=ghr/demo_dataset --dataset.num_episodes=2
-                # --dataset.single_task="This is a demo dataset" --dataset.streaming_encoding=true
-                # --dataset.encoder_threads=2 --display_data=true --teleop.type=so100_leader
-                # --teleop.port=/dev/tty.usbmodem58760431551 --teleop.id=blue 为例还解析命令行参数解析过程...
-                # cli_args = [
-                #     '--robot.type=so100_follower',
-                #     '--robot.port=/dev/tty.usbmodem58760431541',
-                #     '--robot.cameras={laptop: {type: opencv, ...}}',
-                #     '--robot.id=black',
-                #     '--dataset.repo_id=ghr/demo_dataset',
-                #     '--dataset.num_episodes=2',
-                #     '--dataset.single_task=This is a demo dataset',
-                #     '--dataset.streaming_encoding=true',
-                #     '--dataset.encoder_threads=2',
-                #     '--display_data=true',
-                #     '--teleop.type=so100_leader',
-                #     '--teleop.port=/dev/tty.usbmodem58760431551',
-                #     '--teleop.id=blue'
+                # 以 python src/lerobot/scripts/lerobot_train.py
+                #   --dataset.repo_id=my_datasets/record17 --dataset.root=/root/public/ghr/datasets/record17
+                #   --policy.type=pi0 --policy.push_to_hub=false --policy.pretrained_path=lerobot/pi0_base ......
+                #   --job_name=pi0_training
+                #   --wandb.enable=true --wandb.project=pi0_record17
+                #   --num_workers=4 --batch_size=8 --steps=30000 --save_freq=5000 --log_freq=100
+                # 为例还解析命令行参数解析过程👇
+                #       cli_args = [
+                #           '--dataset.repo_id=my_datasets/record17',
+                #           '--dataset.root=/root/public/ghr/datasets/record17',
+                #           '--policy.type=pi0',
+                #           '--policy.push_to_hub=false',
+                #           '--policy.pretrained_path=lerobot/pi0_base',
+                #           ......
+                #           '--steps=30000',
+                #           '--save_freq=5000',
+                #           '--log_freq=100'
                 # ]
                 # 处理插件参数（如果有的话）
                 plugin_args = parse_plugin_args(PLUGIN_DISCOVERY_SUFFIX, cli_args)
@@ -290,25 +287,27 @@ def wrap(config_path: Path | None = None) -> Callable[[F], F]:
                 config_path_cli = parse_arg("config_path", cli_args)
                 # 如果没有 --config_path=xxx，则 config_path_cli = None
 
-                # case1 分支 1: 检查 RecordConfig 是否有 __get_path_fields__ 方法
+                # case1 分支 1: 检查是否有 __get_path_fields__ 方法
                 if has_method(argtype, "__get_path_fields__"):
                     path_fields = argtype.__get_path_fields__()
-                    # path_fields = ["policy"]  （来自 RecordConfig 的定义）
+                    # path_fields = ["policy"]  （来自 TrainPipelineConfig 的定义）
                     cli_args = filter_path_args(path_fields, cli_args)
                     # 移除所有 --policy.xxx 参数，因为它们会被单独处理
                     # 这里没有 --policy.xxx，所以 cli_args 不变
+
                 # case2 分支 2: 检查是否有 from_pretrained 方法
                 if has_method(argtype, "from_pretrained") and config_path_cli:
                     cli_args = filter_arg("config_path", cli_args)
-                    # RecordConfig 没有 from_pretrained 方法，跳过
+                    # TrainPipelineConfig 没有 from_pretrained 方法，跳过
                     cfg = argtype.from_pretrained(config_path_cli, cli_args=cli_args)
+
                 # case3 分支 3: 检查完毕, 开始最终的序列化
                 else:
                     # 调用 draccus.parse() 解析配置, 解析过程👇
-                    #   1. 识别 RecordConfig 是一个 dataclass
-                    #   2. 遍历其字段：robot, dataset, teleop, policy, ...
+                    #   1. 识别 TrainPipelineConfig 是一个 dataclass
+                    #   2. 遍历其字段：dataset, env, policy, ...
                     #   3. 对每个字段递归解析：
-                    #       3.1 --robot.type=so100_follower
+                    #       3.1 --dataset.repo_id=so100_follower
                     #           → 查找 RobotConfig 的子类中名为 "so100_follower" 的类
                     #           → 找到 SOFollowerRobotConfig
                     #           → 继续解析 SOFollowerRobotConfig 的字段
@@ -327,12 +326,12 @@ def wrap(config_path: Path | None = None) -> Callable[[F], F]:
                     #                   height: 480
                     #                   fps: 30
                     #       3.2 同样解析 dataset、teleop 等字段...
-                    #   4. 最终生成完整的 RecordConfig 对象
+                    #   4. 最终生成完整的 TrainPipelineConfig 对象
 
-                    # * 此时的 cfg 是一个完整的 RecordConfig 对象了!!!
+                    # * 此时的 cfg 是一个完整的 TrainPipelineConfig 对象了!!!
                     cfg = draccus.parse(
                         config_class=argtype, config_path=config_path, args=cli_args
-                    )  # argtype = RecordConfig, config_path = None, cli_args = [...一大堆]
+                    )  # argtype = <class 'lerobot.configs.train.TrainPipelineConfig'>, config_path = None, cli_args = [...一大堆]
 
             # 将解析好的 cfg 传入 record() 函数
             response = fn(cfg, *args, **kwargs)  # 等价于：record(cfg)

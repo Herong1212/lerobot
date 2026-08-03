@@ -11,6 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import dotenv
+
+dotenv.load_dotenv(".env")
+
 import builtins
 import datetime as dt
 import os
@@ -53,16 +57,17 @@ class TrainPipelineConfig(HubMixin):
     # Set to True to use deterministic cuDNN algorithms for reproducibility.
     # This disables cudnn.benchmark and may reduce training speed by ~10-20 percent.
     cudnn_deterministic: bool = False
+
     # Number of workers for the dataloader.
     num_workers: int = 4
     batch_size: int = 8
     steps: int = 100_000
-    eval_freq: int = 20_000  # 定期评估的频率, 每个 20000 次评估一次
+    eval_freq: int = 20_000  # 定期评估的频率, 每个 20_000 次评估一次
     log_freq: int = 200  # 定期输出日志的频率, 每个 200 次输出一次
     tolerance_s: float = 1e-4
     save_checkpoint: bool = True
     # Checkpoint is saved every `save_freq` training iterations and after the last training step.
-    save_freq: int = 20_000
+    save_freq: int = 20_000  # 定期保存模型的频率, 每个 20_000 次保存一次
     use_policy_training_preset: bool = True
     optimizer: OptimizerConfig | None = None
     scheduler: LRSchedulerConfig | None = None

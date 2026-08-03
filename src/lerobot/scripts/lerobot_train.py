@@ -13,6 +13,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# import os
+# import sys
+
+# # ! 以下是解决找不到库的问题，问题情况为：
+# # * 终端开启训练时，需要导入 export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH，但是调试时，会报找不到库的错误，解决方法如下👇
+# # Auto-inject conda lib path into LD_LIBRARY_PATH before any native libraries are loaded.
+# # This is necessary because VS Code's debug env expansion may fail when CONDA_PREFIX
+# # is not inherited from the parent shell (e.g. launching VS Code from GUI).
+# _conda_prefix = os.environ.get("CONDA_PREFIX")
+# if _conda_prefix:
+#     _conda_lib = os.path.join(_conda_prefix, "lib")
+#     _current_ld = os.environ.get("LD_LIBRARY_PATH", "")
+#     if _conda_lib not in _current_ld.split(":"):
+#         os.environ["LD_LIBRARY_PATH"] = f"{_conda_lib}:{_current_ld}"
+#         # Re-execute the interpreter with the updated environment so that the
+#         # dynamic linker picks up the new path before loading any shared libs.
+#         os.execv(sys.executable, [sys.executable] + sys.argv)
+
 import dotenv
 
 dotenv.load_dotenv(".env")
@@ -252,7 +270,7 @@ def train(cfg: TrainPipelineConfig, accelerator: Accelerator | None = None):
         logging.info("Creating dataset")
         # INFO 2026-04-07 01:35:53 ot_train.py:251 Creating dataset
         # ? 为什么调用两次 make_dataset(cfg) ？答：这是分布式训练的安全加载流程！
-        # 第1次调用：仅在主进程（rank=0）中执行，负责【下载】数据集
+        # ! 第 1 次调用：仅在主进程（rank=0）中执行，负责【下载】数据集
         dataset = make_dataset(cfg)
 
     # 分布式训练中的「栅栏同步」! 等待所有进程都到达这里才会继续执行
@@ -268,7 +286,7 @@ def train(cfg: TrainPipelineConfig, accelerator: Accelerator | None = None):
 
     # Now all other processes can safely load the dataset
     if not is_main_process:
-        # 第2次调用：其他进程（rank>0）开始【加载】，此时数据集已经存在
+        # ! 第 2 次调用：其他进程（rank>0）开始【加载】数据集，此时数据集已经存在
         dataset = make_dataset(cfg)
 
     # step4. 创建评估环境（仅在仿真环境且主进程时开启）
@@ -352,8 +370,8 @@ def train(cfg: TrainPipelineConfig, accelerator: Accelerator | None = None):
     # * 创建前、后两大处理器
     # ps 工作流程: 数据集原始数据 → preprocessor → 模型输入 → 模型 → 模型输出 → postprocessor → 机器人动作
     preprocessor, postprocessor = make_pre_post_processors(
-        policy_cfg=cfg.policy,
-        pretrained_path=cfg.policy.pretrained_path,
+        policy_cfg=cfg.policy,  # PI0Config 类
+        pretrained_path=cfg.policy.pretrained_path,  # lerobot/pi0_base
         **processor_kwargs,
         **postprocessor_kwargs,
     )
@@ -391,7 +409,8 @@ def train(cfg: TrainPipelineConfig, accelerator: Accelerator | None = None):
             device=device,
         )
 
-    step = 0  # 记录策略更新的步数 (forward + backward + optim)
+    # NOTE 记录策略更新的步数 (forward + backward + optim), 用于主循环
+    step = 0
 
     # step8. 处理断点续训
     if cfg.resume:
@@ -418,25 +437,41 @@ def train(cfg: TrainPipelineConfig, accelerator: Accelerator | None = None):
             env_preprocessor, env_postprocessor = make_env_pre_post_processors(
                 env_cfg=cfg.env, policy_cfg=cfg.policy
             )
+
+        # 打印训练步数
+        # LeRobot 的训练是完全基于 steps 的，没有基于 epoch 的训练模式。也就是每个 batch_size 更新一次 步数
         logging.info(f"{cfg.steps=} ({format_big_number(cfg.steps)})")
         # INFO 2026-04-07 01:37:13 ot_train.py:413 cfg.steps=100000 (100K)
+
+        # 打印训练数据集帧数
         logging.info(f"{dataset.num_frames=} ({format_big_number(dataset.num_frames)})")
         # INFO 2026-04-07 01:37:13 ot_train.py:414 dataset.num_frames=19631 (20K)
+
+        # 打印训练数据集总 episode 数
         logging.info(f"{dataset.num_episodes=}")
         # INFO 2026-04-07 01:37:13 ot_train.py:415 dataset.num_episodes=50
 
-        # ?什么叫有效的 batch_size？答: 这是分布式训练中的核心概念！
+        # 打印进程数, 也就是 GPU 数量
         num_processes = accelerator.num_processes  # 进程数 / 可用 GPU 数
-        effective_bs = cfg.batch_size * num_processes  # 有效 bs = 进程数 * 显卡数
+        logging.info(f"{num_processes=} ({format_big_number(num_processes)})")
+
+        # 打印单个 batch_size 数
+        logging.info(f"{cfg.batch_size=} ({format_big_number(cfg.batch_size)})")
+
+        # 打印有效 batch_size 数
+        effective_bs = cfg.batch_size * num_processes  # * 有效 bs = 进程数 * 显卡数
         logging.info(
             f"Effective batch size: {cfg.batch_size} x {num_processes} = {effective_bs}"
         )
         # INFO 2026-04-07 01:37:13 ot_train.py:420 Effective batch size: 8 x 1 = 8
 
+        # 模型可学习的参数数量
         logging.info(
             f"{num_learnable_params=} ({format_big_number(num_learnable_params)})"
         )
         # INFO 2026-04-07 01:37:13 ot_train.py:422 num_learnable_params=99880992 (100M)
+
+        # 模型全部的参数数量
         logging.info(f"{num_total_params=} ({format_big_number(num_total_params)})")
         # INFO 2026-04-07 01:37:13 ot_train.py:423 num_total_params=450046176 (450M)
 
@@ -459,25 +494,29 @@ def train(cfg: TrainPipelineConfig, accelerator: Accelerator | None = None):
         shuffle = True
         sampler = None  # 自定义采样逻辑, EpisodeAwareSampler 会在 episode 内部打乱，不会跨episode采样
 
+    # NOTE 数据集加载器
     dataloader = torch.utils.data.DataLoader(
         dataset,
-        num_workers=cfg.num_workers,
+        num_workers=cfg.num_workers,  # 4
         batch_size=cfg.batch_size,  # 8
-        shuffle=shuffle and not cfg.dataset.streaming,
-        sampler=sampler,
+        shuffle=shuffle and not cfg.dataset.streaming,  # True
+        sampler=sampler,  # None
         pin_memory=device.type == "cuda",
         drop_last=False,
         prefetch_factor=2 if cfg.num_workers > 0 else None,
     )
-    # print(f"Dataloader Length = {len(dataloader)}")  # Length = 2454，即有 2454 个 batch
+    # 打印 DataLoader 长度：22,334 个 batch
     logging.info(f"Dataloader Length = {len(dataloader)}")
+    # INFO 2026-04-24 07:55:44 ot_train.py:473 Dataloader Length = 22334
+    # ps 即有 22334 个 batch，每个 step 更新一个 batch，则至少 step=22334 才能遍历一个完整的 epoch
 
     # step10. 使用加速器封装所有对象
     accelerator.wait_for_everyone()
     policy, optimizer, dataloader, lr_scheduler = accelerator.prepare(
         policy, optimizer, dataloader, lr_scheduler
     )
-    # 将 dataloader 变为无限循环迭代器
+
+    # * 将 dataloader 变为无限循环迭代器, 每个 dl_iter 是一个数据迭代器
     dl_iter = cycle(dataloader)
 
     policy.train()
@@ -517,20 +556,12 @@ def train(cfg: TrainPipelineConfig, accelerator: Accelerator | None = None):
         )
         # INFO 2026-04-07 01:37:13 ot_train.py:494 Start offline training on a fixed dataset, with effective batch size: 8
 
-    # step11. ================== 主训练循环 ==================
-    logging.info(f"数据集总帧数: {dataset.num_frames}")  # 19631
-    logging.info(f"每个 batch 大小: {cfg.batch_size}")  # 8
-    logging.info(f"总 batch 数: {len(dataloader)}")
-    logging.info(f"GPU 数量: {accelerator.num_processes}")  # 1
-    logging.info(f"有效 batch_size: {effective_batch_size}")  # 8
-
-    # 总共循环 100_000 个 steps
-    for _ in range(step, cfg.steps):
-        # 记录数据加载开始时间
+    # step11. ==================================== 主训练循环 ====================================
+    for _ in range(step, cfg.steps):  # 其中, steps = 22334
         start_time = time.perf_counter()
 
-        # 从 DataLoader 中取出一个 batch（如果到尽头会自动循环）
-        batch = next(dl_iter)
+        # 每次调用 next() 从 DataLoader 中取出一个 batch（如果到尽头会自动循环）
+        batch = next(dl_iter)  # 永远不会抛出 StopIteration！
         # print(f"Batch type: ", type(batch))  # Batch type:  <class 'dict'>
         # print(f"Batch keys: ", batch.keys())
         # dict_keys(

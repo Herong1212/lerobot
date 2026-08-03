@@ -33,8 +33,14 @@ from lerobot.processor import (
     TokenizerProcessorStep,
     UnnormalizerProcessorStep,
 )
-from lerobot.processor.converters import policy_action_to_transition, transition_to_policy_action
-from lerobot.utils.constants import POLICY_POSTPROCESSOR_DEFAULT_NAME, POLICY_PREPROCESSOR_DEFAULT_NAME
+from lerobot.processor.converters import (
+    policy_action_to_transition,
+    transition_to_policy_action,
+)
+from lerobot.utils.constants import (
+    POLICY_POSTPROCESSOR_DEFAULT_NAME,
+    POLICY_PREPROCESSOR_DEFAULT_NAME,
+)
 
 
 @ProcessorStepRegistry.register(name="pi0_new_line_processor")
@@ -74,7 +80,9 @@ class Pi0NewLineProcessor(ComplementaryDataProcessorStep):
                 new_complementary_data["task"] = f"{task}\n"
         elif isinstance(task, list) and all(isinstance(t, str) for t in task):
             # List of strings: add newline to each if not present
-            new_complementary_data["task"] = [t if t.endswith("\n") else f"{t}\n" for t in task]
+            new_complementary_data["task"] = [
+                t if t.endswith("\n") else f"{t}\n" for t in task
+            ]
         # If task is neither string nor list of strings, leave unchanged
 
         return new_complementary_data
@@ -128,7 +136,9 @@ def make_pi0_pre_post_processors(
 
     # Add remaining processors
     input_steps: list[ProcessorStep] = [
-        RenameObservationsProcessorStep(rename_map={}),  # To mimic the same processor as pretrained one
+        RenameObservationsProcessorStep(
+            rename_map={}
+        ),  # To mimic the same processor as pretrained one
         AddBatchDimensionProcessorStep(),
         Pi0NewLineProcessor(),  # Add newlines before tokenization for PaliGemma
         TokenizerProcessorStep(
@@ -147,7 +157,9 @@ def make_pi0_pre_post_processors(
 
     output_steps: list[ProcessorStep] = [
         UnnormalizerProcessorStep(
-            features=config.output_features, norm_map=config.normalization_mapping, stats=dataset_stats
+            features=config.output_features,
+            norm_map=config.normalization_mapping,
+            stats=dataset_stats,
         ),
         DeviceProcessorStep(device="cpu"),
     ]

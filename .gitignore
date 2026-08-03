@@ -189,3 +189,4 @@ datasets-*
 *.rrd
 .zread
 *.hdf5
+.history

@@ -33,10 +33,12 @@ class PI0Config(PreTrainedConfig):
     action_expert_variant: str = "gemma_300m"
     dtype: str = "float32"  # Options: "bfloat16", "float32"
 
-    n_obs_steps: int = 1
-    chunk_size: int = (
-        50  # Number of action steps to predict, in openpi called "action_horizon"
-    )
+    # ps Number of Observation Steps（观测步数），表示模型在做决策时，会使用过去多少个时间步的观测历史。
+    n_obs_steps: int = 1  # 只使用当前时刻的观测，模型只看"现在" → "预测未来"
+    # ps 训练时，模型预测多少个动作步
+    # Number of action steps to predict, in openpi called "action_horizon"
+    chunk_size: int = 50
+    # ps 推理时，实际执行多少个动作步
     n_action_steps: int = 50  # Number of action steps to execute
 
     # Shorter state and action vectors will be padded to these dimensions
@@ -73,11 +75,23 @@ class PI0Config(PreTrainedConfig):
     )
 
     # Training settings
-    gradient_checkpointing: bool = (
-        False  # Enable gradient checkpointing for memory optimization
-    )
-    compile_model: bool = False  # Whether to use torch.compile for model optimization
+    # 是否启用梯度检查点（Gradient Checkpointing），也叫激活重计算（Activation Recomputation）
+    # ps 相比于 gradient_checkpointing=false, 模型训练速度会变慢 10~20%, 显存占用降低 40~60%
+    gradient_checkpointing: bool = False
+
+    compile_model: bool = False  # 是否启用 torch.compile() 对模型进行编译优化
+    # 当 compile_model=true 时, PyTorch 会：
+    #   1. 分析模型计算图
+    #   2. 融合多个算子（Operator Fusion）
+    #   3. 生成优化的 CUDA Kernel
+    #   4. 使用 CUDA Graph 缓存执行计划
+    # ! 可能会报错: RuntimeError: live storage data ptrs not accounted for
+    # * 报错原因: compile_model 与 gradient_checkpointing 同时启用时, 两者在 CUDA Graph 模式下存在内存管理冲突
+    # NOTE 但是多卡分布式训练情况下建议开启，此时与 gradient_checkpointing=true 同时开启的话不会冲突！
+    # ps 相比于 compile_model=false, 模型训练速度会快 1.5-2x, 显存占用略低, 但会增加启动时间, 稳定性中等
+
     compile_mode: str = "max-autotune"  # Torch compile mode
+
     device: str | None = None  # Device to use for the model (None = auto-detect)
 
     # Finetuning settings

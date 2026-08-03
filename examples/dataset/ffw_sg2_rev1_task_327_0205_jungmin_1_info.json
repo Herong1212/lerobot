@@ -1,0 +1,180 @@
+{
+    "codebase_version": "v3.0",
+    "robot_type": "ffw_sg2_rev1",
+    "total_episodes": 60,
+    "total_frames": 10477,
+    "total_tasks": 1,
+    "chunks_size": 1000,
+    "fps": 15,
+    "splits": {
+        "train": "0:60"
+    },
+    "data_path": "data/chunk-{chunk_index:03d}/file-{file_index:03d}.parquet",
+    "video_path": "videos/{video_key}/chunk-{chunk_index:03d}/file-{file_index:03d}.mp4",
+    "features": {
+        "timestamp": {
+            "dtype": "float32",
+            "shape": [
+                1
+            ],
+            "names": null,
+            "fps": 15
+        },
+        "frame_index": {
+            "dtype": "int64",
+            "shape": [
+                1
+            ],
+            "names": null,
+            "fps": 15
+        },
+        "episode_index": {
+            "dtype": "int64",
+            "shape": [
+                1
+            ],
+            "names": null,
+            "fps": 15
+        },
+        "index": {
+            "dtype": "int64",
+            "shape": [
+                1
+            ],
+            "names": null,
+            "fps": 15
+        },
+        "task_index": {
+            "dtype": "int64",
+            "shape": [
+                1
+            ],
+            "names": null,
+            "fps": 15
+        },
+        "observation.images.cam_head": {
+            "dtype": "video",
+            "names": [
+                "height",
+                "width",
+                "channels"
+            ],
+            "shape": [
+                376,
+                672,
+                3
+            ],
+            "info": {
+                "video.height": 376,
+                "video.width": 672,
+                "video.channels": 3,
+                "video.codec": "libx264",
+                "video.pix_fmt": "yuv420p"
+            }
+        },
+        "observation.images.cam_wrist_left": {
+            "dtype": "video",
+            "names": [
+                "height",
+                "width",
+                "channels"
+            ],
+            "shape": [
+                240,
+                424,
+                3
+            ],
+            "info": {
+                "video.height": 240,
+                "video.width": 424,
+                "video.channels": 3,
+                "video.codec": "libx264",
+                "video.pix_fmt": "yuv420p"
+            }
+        },
+        "observation.images.cam_wrist_right": {
+            "dtype": "video",
+            "names": [
+                "height",
+                "width",
+                "channels"
+            ],
+            "shape": [
+                240,
+                424,
+                3
+            ],
+            "info": {
+                "video.height": 240,
+                "video.width": 424,
+                "video.channels": 3,
+                "video.codec": "libx264",
+                "video.pix_fmt": "yuv420p"
+            }
+        },
+        "observation.state": {
+            "dtype": "float32",
+            "names": [
+                "arm_l_joint1",
+                "arm_l_joint2",
+                "arm_l_joint3",
+                "arm_l_joint4",
+                "arm_l_joint5",
+                "arm_l_joint6",
+                "arm_l_joint7",
+                "gripper_l_joint1",
+                "arm_r_joint1",
+                "arm_r_joint2",
+                "arm_r_joint3",
+                "arm_r_joint4",
+                "arm_r_joint5",
+                "arm_r_joint6",
+                "arm_r_joint7",
+                "gripper_r_joint1",
+                "head_joint1",
+                "head_joint2",
+                "lift_joint",
+                "linear_x",
+                "linear_y",
+                "angular_z"
+            ],
+            "shape": [
+                22
+            ],
+            "fps": 15
+        },
+        "action": {
+            "dtype": "float32",
+            "names": [
+                "arm_l_joint1",
+                "arm_l_joint2",
+                "arm_l_joint3",
+                "arm_l_joint4",
+                "arm_l_joint5",
+                "arm_l_joint6",
+                "arm_l_joint7",
+                "gripper_l_joint1",
+                "arm_r_joint1",
+                "arm_r_joint2",
+                "arm_r_joint3",
+                "arm_r_joint4",
+                "arm_r_joint5",
+                "arm_r_joint6",
+                "arm_r_joint7",
+                "gripper_r_joint1",
+                "head_joint1",
+                "head_joint2",
+                "lift_joint",
+                "linear_x",
+                "linear_y",
+                "angular_z"
+            ],
+            "shape": [
+                22
+            ],
+            "fps": 15
+        }
+    },
+    "data_files_size_in_mb": 100,
+    "video_files_size_in_mb": 200
+}
